@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Codebase Analyzer</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --bg: #f8f9fa;
+    --surface: #ffffff;
+    --text: #1a1a2e;
+    --text-secondary: #555770;
+    --border: #e0e0e6;
+    --accent: #4361ee;
+    --accent-light: #eef0ff;
+    --green: #10b981;
+    --yellow: #f59e0b;
+    --red: #ef4444;
+    --orange: #f97316;
+    --radius: 10px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-lg: 0 4px 12px rgba(0,0,0,0.08);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1b26;
+      --text: #e2e4f0;
+      --text-secondary: #9a9bb4;
+      --border: #2a2b3d;
+      --accent: #6c8aff;
+      --accent-light: #1e2240;
+      --shadow: 0 1px 3px rgba(0,0,0,0.3);
+      --shadow-lg: 0 4px 12px rgba(0,0,0,0.4);
+    }
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 40px 24px; }
+
+  h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  h1 span { color: var(--accent); }
+
+  .header {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+
+  .header p {
+    color: var(--text-secondary);
+    margin-top: 6px;
+    font-size: 0.95rem;
+  }
+
+  /* Input bar */
+  .input-bar {
+    display: flex;
+    gap: 10px;
+    background: var(--surface);
+    padding: 8px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    margin-bottom: 32px;
+  }
+
+  .input-bar input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 10px 14px;
+    font-size: 0.95rem;
+    color: var(--text);
+    outline: none;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  }
+
+  .input-bar input::placeholder { color: var(--text-secondary); opacity: 0.6; }
+
+  .btn {
+    padding: 10px 28px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 7px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    white-space: nowrap;
+  }
+
+  .btn:hover { opacity: 0.88; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Loading */
+  .loading {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 60px 0;
+  }
+
+  .loading.active { display: flex; }
+
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading p { color: var(--text-secondary); font-size: 0.95rem; }
+
+  /* Error */
+  .error-msg {
+    display: none;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+    padding: 14px 18px;
+    border-radius: var(--radius);
+    margin-bottom: 24px;
+    font-size: 0.9rem;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .error-msg { background: #2d1b1b; border-color: #5c2020; color: #fca5a5; }
+  }
+
+  /* Report */
+  #report { display: none; }
+  #report.active { display: block; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow);
+  }
+
+  .card h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+  }
+
+  /* Score circle */
+  .score-hero {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+
+  .score-circle {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    flex-shrink: 0;
+  }
+
+  .score-circle svg { transform: rotate(-90deg); }
+
+  .score-circle-bg {
+    fill: none;
+    stroke: var(--border);
+    stroke-width: 8;
+  }
+
+  .score-circle-fg {
+    fill: none;
+    stroke-width: 8;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.8s ease;
+  }
+
+  .score-number {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: 700;
+  }
+
+  .score-number span { font-size: 1rem; font-weight: 400; color: var(--text-secondary); }
+
+  .assessment-text {
+    flex: 1;
+    min-width: 240px;
+    font-size: 1.05rem;
+    line-height: 1.7;
+    color: var(--text);
+  }
+
+  /* Category scores */
+  .category-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+  }
+
+  .category-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .category-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    text-transform: capitalize;
+  }
+
+  .category-bar-track {
+    height: 8px;
+    background: var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .category-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.6s ease;
+  }
+
+  .category-value {
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+
+  /* Lists */
+  .item-list { list-style: none; }
+
+  .item-list li {
+    padding: 10px 14px;
+    border-radius: 7px;
+    margin-bottom: 6px;
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+
+  .item-list.strengths li { background: #ecfdf5; color: #065f46; }
+  .item-list.issues li { background: #fef2f2; color: #991b1b; }
+  .item-list.improvements li { background: #fffbeb; color: #92400e; }
+  .item-list.neutral li { background: var(--accent-light); color: var(--text); }
+
+  @media (prefers-color-scheme: dark) {
+    .item-list.strengths li { background: #0d2818; color: #6ee7b7; }
+    .item-list.issues li { background: #2d1b1b; color: #fca5a5; }
+    .item-list.improvements li { background: #2d2410; color: #fcd34d; }
+    .item-list.neutral li { background: var(--accent-light); color: var(--text); }
+  }
+
+  /* Violation sections */
+  .violation-section { margin-bottom: 14px; }
+
+  .violation-section h3 {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+  }
+
+  .violation-section li {
+    background: var(--accent-light);
+    color: var(--text);
+    padding: 8px 14px;
+    border-radius: 7px;
+    margin-bottom: 4px;
+    font-size: 0.88rem;
+  }
+
+  .empty-state {
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    font-style: italic;
+  }
+
+  /* Summary stats */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 12px;
+  }
+
+  .summary-stat {
+    text-align: center;
+    padding: 14px 8px;
+    background: var(--accent-light);
+    border-radius: 8px;
+  }
+
+  .summary-stat .num {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .summary-stat .label {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    margin-top: 2px;
+  }
+
+  /* Endpoints table */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+  }
+
+  .data-table th {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 2px solid var(--border);
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  .data-table td {
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .method-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    font-family: monospace;
+  }
+
+  .method-GET { background: #dbeafe; color: #1d4ed8; }
+  .method-POST { background: #dcfce7; color: #166534; }
+  .method-PUT { background: #fef3c7; color: #92400e; }
+  .method-DELETE { background: #fee2e2; color: #991b1b; }
+  .method-PATCH { background: #f3e8ff; color: #6b21a8; }
+
+  @media (prefers-color-scheme: dark) {
+    .method-GET { background: #1e3a5f; color: #93c5fd; }
+    .method-POST { background: #14532d; color: #86efac; }
+    .method-PUT { background: #422006; color: #fde68a; }
+    .method-DELETE { background: #450a0a; color: #fca5a5; }
+    .method-PATCH { background: #3b0764; color: #d8b4fe; }
+  }
+
+  .mono { font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace; font-size: 0.85rem; }
+
+  /* Packages */
+  .package-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+  }
+
+  .package-item:last-child { border-bottom: none; }
+
+  .package-name { font-family: monospace; font-size: 0.88rem; flex: 1; min-width: 0; word-break: break-all; }
+
+  .package-badges { display: flex; gap: 6px; flex-wrap: wrap; flex-shrink: 0; }
+
+  .badge {
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: var(--accent-light);
+    color: var(--accent);
+    white-space: nowrap;
+  }
+
+  /* Mermaid diagram */
+  .mermaid-container {
+    overflow-x: auto;
+    padding: 16px 0;
+  }
+
+  .mermaid-container svg { max-width: 100%; height: auto; }
+
+  /* Coupling */
+  .coupling-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .coupling-item:last-child { border-bottom: none; }
+
+  .coupling-rank {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+  }
+
+  .coupling-text { font-size: 0.9rem; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>Codebase <span>Analyzer</span></h1>
+    <p>Architecture analysis powered by AI</p>
+  </div>
+
+  <div class="input-bar">
+    <input type="text" id="projectInput" placeholder="Local path or Git URL, e.g. https://github.com/user/repo.git">
+    <button class="btn" id="analyzeBtn" onclick="analyze()">Analyze</button>
+  </div>
+
+  <div class="error-msg" id="errorMsg"></div>
+
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p id="loadingText">Scanning project and running AI analysis...</p>
+  </div>
+
+  <div id="report"></div>
+</div>
+
+<script>
+  mermaid.initialize({ startOnLoad: false, theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default' });
+
+  const $ = id => document.getElementById(id);
+
+  function isGitUrl(input) {
+    return input.startsWith('https://') || input.startsWith('http://') || input.startsWith('git@') || input.endsWith('.git');
+  }
+
+  async function analyze() {
+    const input = $('projectInput').value.trim();
+    if (!input) return;
+
+    $('errorMsg').style.display = 'none';
+    $('report').className = '';
+    $('report').innerHTML = '';
+    $('loading').classList.add('active');
+    $('analyzeBtn').disabled = true;
+
+    const isRepo = isGitUrl(input);
+    const param = isRepo
+      ? 'repoUrl=' + encodeURIComponent(input)
+      : 'projectPath=' + encodeURIComponent(input);
+    $('loadingText').textContent = isRepo
+      ? 'Cloning repository, scanning, and running AI analysis...'
+      : 'Scanning project and running AI analysis...';
+
+    try {
+      const res = await fetch('/analyse/ai?' + param, { method: 'POST' });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || ('HTTP ' + res.status));
+      }
+      const data = await res.json();
+      $('loading').classList.remove('active');
+      renderReport(data);
+    } catch (e) {
+      $('loading').classList.remove('active');
+      $('errorMsg').textContent = 'Analysis failed: ' + e.message;
+      $('errorMsg').style.display = 'block';
+    } finally {
+      $('analyzeBtn').disabled = false;
+    }
+  }
+
+  $('projectInput').addEventListener('keydown', e => { if (e.key === 'Enter') analyze(); });
+
+  function scoreColor(score) {
+    if (score >= 8) return 'var(--green)';
+    if (score >= 6) return 'var(--yellow)';
+    if (score >= 4) return 'var(--orange)';
+    return 'var(--red)';
+  }
+
+  function renderList(items, cls) {
+    if (!items || items.length === 0) return '<p class="empty-state">None detected.</p>';
+    return '<ul class="item-list ' + cls + '">' + items.map(i => '<li>' + esc(i) + '</li>').join('') + '</ul>';
+  }
+
+  function esc(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  function renderReport(data) {
+    const ai = data.aiReport;
+    const raw = data.rawAnalysis;
+    const score = ai.architectureScore;
+    const circumference = 2 * Math.PI * 52;
+    const offset = circumference - (score / 10) * circumference;
+    const color = scoreColor(score);
+
+    let html = '';
+
+    // Score + Assessment
+    html += '<div class="card"><div class="score-hero">';
+    html += '<div class="score-circle">';
+    html += '<svg width="120" height="120" viewBox="0 0 120 120">';
+    html += '<circle class="score-circle-bg" cx="60" cy="60" r="52"/>';
+    html += '<circle class="score-circle-fg" cx="60" cy="60" r="52" stroke="' + color + '" stroke-dasharray="' + circumference + '" stroke-dashoffset="' + offset + '"/>';
+    html += '</svg>';
+    html += '<div class="score-number">' + score + '<span>/10</span></div>';
+    html += '</div>';
+    html += '<div class="assessment-text">' + esc(ai.overallAssessment) + '</div>';
+    html += '</div></div>';
+
+    // Category scores
+    html += '<div class="card"><h2>Category Scores</h2><div class="category-grid">';
+    if (ai.categoryScores) {
+      for (const [key, val] of Object.entries(ai.categoryScores)) {
+        const c = scoreColor(val);
+        html += '<div class="category-item">';
+        html += '<div class="category-label">' + esc(key) + '</div>';
+        html += '<div class="category-bar-track"><div class="category-bar-fill" style="width:' + (val * 10) + '%;background:' + c + '"></div></div>';
+        html += '<div class="category-value" style="color:' + c + '">' + val + '/10</div>';
+        html += '</div>';
+      }
+    }
+    html += '</div></div>';
+
+    // Architecture summary
+    if (raw && raw.summary) {
+      const s = raw.summary;
+      const stats = [
+        ['Controllers', s.controllers], ['Services', s.services], ['Repositories', s.repositories],
+        ['Components', s.components], ['Configurations', s.configurations], ['Entities', s.entities]
+      ].filter(x => x[1] > 0);
+      html += '<div class="card"><h2>Architecture Summary</h2><div class="summary-grid">';
+      stats.forEach(([label, num]) => {
+        html += '<div class="summary-stat"><div class="num">' + num + '</div><div class="label">' + label + '</div></div>';
+      });
+      html += '</div></div>';
+    }
+
+    // Strengths
+    html += '<div class="card"><h2>Strengths</h2>' + renderList(ai.strengths, 'strengths') + '</div>';
+
+    // Critical issues
+    html += '<div class="card"><h2>Critical Issues</h2>' + renderList(ai.criticalIssues, 'issues') + '</div>';
+
+    // Improvements
+    html += '<div class="card"><h2>Improvements</h2>' + renderList(ai.improvements, 'improvements') + '</div>';
+
+    // Coupling ranking
+    if (raw && raw.couplingRanking && raw.couplingRanking.length > 0) {
+      html += '<div class="card"><h2>Coupling Ranking</h2>';
+      raw.couplingRanking.forEach((item, i) => {
+        html += '<div class="coupling-item"><div class="coupling-rank">' + (i + 1) + '</div><div class="coupling-text">' + esc(item) + '</div></div>';
+      });
+      html += '</div>';
+    }
+
+    // Violation sections
+    const violationSections = [
+      ['Layer Violations', ai.layerViolationAnalysis],
+      ['Circular Dependencies', ai.circularDependencyAnalysis],
+      ['God Classes', ai.godClassAnalysis],
+      ['Orphan Services', ai.orphanServiceAnalysis],
+      ['Fat Controllers', ai.fatControllerAnalysis],
+      ['Empty Controllers', ai.emptyControllerAnalysis]
+    ];
+    const hasViolations = violationSections.some(([, items]) => items && items.length > 0);
+    html += '<div class="card"><h2>Violation Analysis</h2>';
+    if (!hasViolations) {
+      html += '<p class="empty-state">No violations detected.</p>';
+    } else {
+      violationSections.forEach(([title, items]) => {
+        if (items && items.length > 0) {
+          html += '<div class="violation-section"><h3>' + esc(title) + '</h3>';
+          html += '<ul class="item-list neutral">' + items.map(i => '<li>' + esc(i) + '</li>').join('') + '</ul></div>';
+        }
+      });
+    }
+    html += '</div>';
+
+    // Endpoints
+    if (raw && raw.endpoints && raw.endpoints.length > 0) {
+      html += '<div class="card"><h2>REST Endpoints</h2>';
+      html += '<table class="data-table"><thead><tr><th>Method</th><th>Path</th><th>Controller</th><th>Handler</th></tr></thead><tbody>';
+      raw.endpoints.forEach(ep => {
+        html += '<tr>';
+        html += '<td><span class="method-badge method-' + esc(ep.httpMethod) + '">' + esc(ep.httpMethod) + '</span></td>';
+        html += '<td class="mono">' + esc(ep.endpointPath) + '</td>';
+        html += '<td>' + esc(ep.controllerName) + '</td>';
+        html += '<td class="mono">' + esc(ep.methodName) + '()</td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+
+    // Packages
+    if (raw && raw.packages && raw.packages.length > 0) {
+      html += '<div class="card"><h2>Package Breakdown</h2>';
+      raw.packages.forEach(pkg => {
+        html += '<div class="package-item">';
+        html += '<span class="package-name">' + esc(pkg.packageName) + '</span>';
+        html += '<div class="package-badges">';
+        html += '<span class="badge">' + pkg.classCount + ' classes</span>';
+        if (pkg.componentTypeDistribution) {
+          for (const [type, count] of Object.entries(pkg.componentTypeDistribution)) {
+            if (type !== 'UNKNOWN') html += '<span class="badge">' + count + ' ' + esc(type.toLowerCase().replace('_', ' ')) + '</span>';
+          }
+        }
+        html += '</div></div>';
+      });
+      html += '</div>';
+    }
+
+    // Mermaid diagram
+    if (data.mermaidDiagram) {
+      html += '<div class="card"><h2>Architecture Diagram</h2><div class="mermaid-container"><pre class="mermaid">' + esc(data.mermaidDiagram) + '</pre></div></div>';
+    }
+
+    $('report').innerHTML = html;
+    $('report').className = 'active';
+
+    mermaid.run({ nodes: document.querySelectorAll('.mermaid') });
+  }
+</script>
+
+</body>
+</html>

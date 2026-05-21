@@ -1,0 +1,14 @@
+package com.isbrain.codebaseanalyzer.model;
+
+public enum ComponentType {
+	REST_CONTROLLER,
+	CONTROLLER,
+	SERVICE,
+	REPOSITORY,
+	COMPONENT,
+	CONFIGURATION,
+	ENTITY,
+	CONTROLLER_ADVICE,
+	REST_CONTROLLER_ADVICE,
+	UNKNOWN
+}

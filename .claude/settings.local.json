@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__acp__Edit",
+      "mcp__acp__Write",
+      "Bash(/c/Windows/System32/cmd.exe /c \"for /f \"\"tokens=5\"\" %a in \\(''netstat -ano ^| findstr :8080 ^| findstr LISTENING''\\) do taskkill /PID %a /F\")",
+      "Bash(/c/Windows/System32/cmd.exe /c \"netstat -ano | findstr :8080\")",
+      "Bash(/c/Windows/System32/cmd.exe /c \"tasklist | findstr java\")",
+      "Bash(/c/Windows/System32/cmd.exe /c \"tasklist /FI \"\"IMAGENAME eq java.exe\"\"\")",
+      "Bash(/c/Windows/System32/cmd.exe /c \"netstat -ano | findstr LISTENING | findstr 8080\")",
+      "mcp__idea__list_directory_tree",
+      "mcp__idea__read_file",
+      "mcp__idea__replace_text_in_file",
+      "mcp__idea__get_file_problems",
+      "Bash(./mvnw compile:*)",
+      "Bash(./mvnw test:*)",
+      "Bash(./mvnw dependency:tree:*)",
+      "Bash(timeout 20 ./mvnw spring-boot:run:*)",
+      "Bash(curl:*)",
+      "Bash(./mvnw spring-boot:run:*)",
+      "Bash(git rm:*)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}

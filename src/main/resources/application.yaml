@@ -1,0 +1,7 @@
+spring:
+  application:
+    name: ai-codebase-analyzer
+
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:your-api-key-here}
