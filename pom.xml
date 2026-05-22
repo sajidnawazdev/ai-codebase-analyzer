@@ -9,7 +9,7 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.isbrain</groupId>
-	<artifactId>codebaseanalyzer</artifactId>
+	<artifactId>ai-codebase-analyzer</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name/>
 	<description/>

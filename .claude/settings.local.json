@@ -21,7 +21,9 @@
       "Bash(git rm:*)",
       "Bash(git checkout:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git branch:*)",
+      "Bash(D:/dev/projects/isbtech/ai-codebase-analyzer/docs/README.md:*)"
     ]
   }
 }

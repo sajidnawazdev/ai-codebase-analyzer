@@ -2,9 +2,11 @@
 
 **AI-powered architecture analysis for Spring Boot projects.**
 
-Paste a Git URL or local path, get a full architecture report with scores, violation detection, coupling analysis, and an AI-generated assessment — in seconds.
+> Built as a portfolio project demonstrating AI-native Java engineering — LLM integration, static analysis, prompt engineering, and full-stack delivery.
 
-![Dashboard Screenshot](docs/screenshot.png)
+![Demo](docs/demo.gif)
+
+Paste a Git URL or local path, get a full architecture report with scores, violation detection, coupling analysis, and an AI-generated assessment — in seconds.
 
 ---
 
@@ -29,7 +31,7 @@ docker run -p 8080:8080 ai-codebase-analyzer
 To analyze a local project from inside Docker, mount it as a volume:
 
 ```bash
-docker run -p 8080:8080 -v /path/to/project:/scan ai-codebase-analyzer
+docker run -p 8080:8080 -e OPENAI_API_KEY=sk-your-key -v /path/to/project:/scan ai-codebase-analyzer
 ```
 
 Then use `/scan` as the project path in the UI.
@@ -102,11 +104,7 @@ graph TD
   ClassAnalyserService --> EndpointExtractorService
 ```
 
-**Legend:**
-- Green = REST Controller
-- Blue = Service
-- Orange = Repository
-- Purple = Configuration
+Controllers → Services → Extractors (left to right = entry point to leaf)
 
 ---
 
