@@ -34,7 +34,7 @@ class ClassAnalyserServiceTest {
 			assertEquals(1, result.classes().size());
 			var clazz = result.classes().get(0);
 			assertEquals("SampleController", clazz.className());
-			assertEquals("com.example.controller", clazz.packageName());
+			assertEquals("com.isbrain.codebaseanalyzer.controller", clazz.packageName());
 			assertEquals(ComponentType.REST_CONTROLLER, clazz.componentType());
 		}
 
