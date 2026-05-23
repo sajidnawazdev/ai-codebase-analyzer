@@ -197,3 +197,11 @@ src/main/resources/
   static/index.html  Single-page dashboard
   application.yaml   Configuration
 ```
+
+---
+
+## Future Improvements
+
+- Authentication & rate limiting for public deployment
+- Input validation and path sanitization
+- Support for additional languages beyond Java/Spring
