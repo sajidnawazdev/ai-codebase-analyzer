@@ -7,6 +7,10 @@ import com.isbrain.codebaseanalyzer.service.ProjectScannerService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -14,12 +18,14 @@ import java.util.List;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(AnalysisController.class)
+@Import(AnalysisControllerTest.TestSecurityConfig.class)
 class AnalysisControllerTest {
 
 	@Autowired
@@ -52,7 +58,15 @@ class AnalysisControllerTest {
 		);
 	}
 
+	static class TestSecurityConfig {
+		@Bean
+		public JwtDecoder jwtDecoder() {
+			return mock(JwtDecoder.class);
+		}
+	}
+
 	@Test
+	@WithMockUser(roles = "USER")
 	void analyseReturnsProjectAnalysisResult() throws Exception {
 		when(projectScannerService.analyseProject(any())).thenReturn(sampleResult());
 
@@ -79,12 +93,14 @@ class AnalysisControllerTest {
 	}
 
 	@Test
+	@WithMockUser(roles = "USER")
 	void analyseFailsWithoutProjectPathOrRepoUrl() {
 		assertThrows(Exception.class, () ->
 				mockMvc.perform(post("/analyse")));
 	}
 
 	@Test
+	@WithMockUser(roles = "USER")
 	void analyseWithAiReturnsFullResponse() throws Exception {
 		when(projectScannerService.analyseProject(any())).thenReturn(sampleResult());
 		when(aiAnalysisService.analyseWithAi(any())).thenReturn(new AiAnalysisReport(
