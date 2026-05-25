@@ -23,7 +23,12 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git branch:*)",
-      "Bash(D:/dev/projects/isbtech/ai-codebase-analyzer/docs/README.md:*)"
+      "Bash(D:/dev/projects/isbtech/ai-codebase-analyzer/docs/README.md:*)",
+      "Bash(./mvnw:*)",
+      "Bash(D:/dev/projects/isbtech/ai-codebase-analyzer/docker-compose.yml:*)",
+      "mcp__idea__get_file_text_by_path",
+      "mcp__idea__create_new_file",
+      "Bash(\"D:/dev/projects/isbtech/ai-codebase-analyzer/src/main/java/com/isbrain/codebaseanalyzer/service/AnalysisEventPublisher.java\":*)"
     ]
   }
 }

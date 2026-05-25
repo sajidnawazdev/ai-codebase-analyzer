@@ -29,6 +29,7 @@ public class ProjectScannerService {
 			return paths
 					.filter(Files::isRegularFile)
 					.filter(path -> path.toString().endsWith(".java"))
+					.filter(path -> !path.toString().contains("src" + path.getFileSystem().getSeparator() + "test"))
 					.toList();
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);

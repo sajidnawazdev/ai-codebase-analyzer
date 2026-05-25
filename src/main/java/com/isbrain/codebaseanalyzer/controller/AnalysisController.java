@@ -1,21 +1,28 @@
 package com.isbrain.codebaseanalyzer.controller;
 
 import com.isbrain.codebaseanalyzer.model.AiAnalysisReport;
+import com.isbrain.codebaseanalyzer.model.AnalysisCompletedEvent;
 import com.isbrain.codebaseanalyzer.model.FullAnalysisResponse;
 import com.isbrain.codebaseanalyzer.model.ProjectAnalysisResult;
 import com.isbrain.codebaseanalyzer.service.AiAnalysisService;
+import com.isbrain.codebaseanalyzer.service.AnalysisEventPublisher;
 import com.isbrain.codebaseanalyzer.service.GitCloneService;
 import com.isbrain.codebaseanalyzer.service.ProjectScannerService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
+@Slf4j
 @RestController
 @RequestMapping("/analyse")
 @RequiredArgsConstructor
@@ -24,6 +31,7 @@ public class AnalysisController {
 	private final ProjectScannerService projectScannerService;
 	private final AiAnalysisService aiAnalysisService;
 	private final GitCloneService gitCloneService;
+	private final AnalysisEventPublisher analysisEventPublisher;
 
 	@PostMapping
 	public ProjectAnalysisResult analyse(
@@ -59,15 +67,37 @@ public class AnalysisController {
 			allViolations.addAll(result.orphanServices());
 			allViolations.addAll(result.fatControllers());
 
-			return new FullAnalysisResponse(
+			FullAnalysisResponse response = new FullAnalysisResponse(
 					aiReport,
 					result.mermaidDiagram(),
 					allViolations,
 					result
 			);
+
+			publishEventAsync(aiReport, allViolations.size(), scanPath);
+
+			return response;
 		} finally {
 			gitCloneService.cleanup(clonedDir);
 		}
+	}
+
+	private void publishEventAsync(AiAnalysisReport aiReport,
+								   int violationCount, String projectPath) {
+		String projectName = Paths.get(projectPath).getFileName().toString();
+		AnalysisCompletedEvent event = new AnalysisCompletedEvent(
+				projectName,
+				projectPath,
+				aiReport.architectureScore(),
+				aiReport.categoryScores(),
+				violationCount,
+				LocalDateTime.now()
+		);
+		CompletableFuture.runAsync(() -> analysisEventPublisher.publish(event))
+				.exceptionally(ex -> {
+					log.error("Failed to publish analysis event for project: {}", projectName, ex);
+					return null;
+				});
 	}
 
 	private String resolveProjectPath(String projectPath, String repoUrl) {

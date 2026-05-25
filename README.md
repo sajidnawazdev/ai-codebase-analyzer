@@ -19,6 +19,17 @@ Paste a Git URL or local path, get a full architecture report with scores, viola
 
 ---
 
+## Infrastructure
+
+Start required services:
+```bash
+docker-compose up -d
+```
+
+This starts Kafka, Zookeeper, PostgreSQL, and Keycloak.
+
+---
+
 ## How to Run
 
 ### Option 1: Docker
