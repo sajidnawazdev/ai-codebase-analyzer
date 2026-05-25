@@ -2,6 +2,7 @@ package com.isbrain.codebaseanalyzer.controller;
 
 import com.isbrain.codebaseanalyzer.model.*;
 import com.isbrain.codebaseanalyzer.service.AiAnalysisService;
+import com.isbrain.codebaseanalyzer.service.AnalysisEventPublisher;
 import com.isbrain.codebaseanalyzer.service.GitCloneService;
 import com.isbrain.codebaseanalyzer.service.ProjectScannerService;
 import org.junit.jupiter.api.Test;
@@ -23,6 +24,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(value = AnalysisController.class,
@@ -41,6 +43,9 @@ class AnalysisControllerTest {
 
 	@MockitoBean
 	private GitCloneService gitCloneService;
+
+	@MockitoBean
+	private AnalysisEventPublisher analysisEventPublisher;
 
 	private ProjectAnalysisResult sampleResult() {
 		return new ProjectAnalysisResult(
@@ -66,7 +71,8 @@ class AnalysisControllerTest {
 		when(projectScannerService.analyseProject(any())).thenReturn(sampleResult());
 
 		mockMvc.perform(post("/analyse")
-						.param("projectPath", "/some/path"))
+						.param("projectPath", "/some/path")
+						.with(csrf()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.summary.controllers").value(1))
 				.andExpect(jsonPath("$.summary.services").value(2))
@@ -91,7 +97,7 @@ class AnalysisControllerTest {
 	@WithMockUser(roles = "USER")
 	void analyseFailsWithoutProjectPathOrRepoUrl() {
 		assertThrows(Exception.class, () ->
-				mockMvc.perform(post("/analyse")));
+				mockMvc.perform(post("/analyse").with(csrf())));
 	}
 
 	@Test
@@ -106,7 +112,8 @@ class AnalysisControllerTest {
 		));
 
 		mockMvc.perform(post("/analyse/ai")
-						.param("projectPath", "/some/path"))
+						.param("projectPath", "/some/path")
+						.with(csrf()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.aiReport.overallAssessment").value("Well structured project"))
 				.andExpect(jsonPath("$.aiReport.architectureScore").value(8))
