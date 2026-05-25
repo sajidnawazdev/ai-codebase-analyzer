@@ -6,10 +6,8 @@ import com.isbrain.codebaseanalyzer.service.GitCloneService;
 import com.isbrain.codebaseanalyzer.service.ProjectScannerService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -18,14 +16,12 @@ import java.util.List;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(AnalysisController.class)
-@Import(AnalysisControllerTest.TestSecurityConfig.class)
+@WebMvcTest(value = AnalysisController.class, excludeAutoConfiguration = OAuth2ResourceServerAutoConfiguration.class)
 class AnalysisControllerTest {
 
 	@Autowired
@@ -56,13 +52,6 @@ class AnalysisControllerTest {
 				List.of("UserService (SERVICE) — coupling score: 3 (outgoing: 1, incoming: 2)"),
 				"graph TD\n  Controller --> Service\n"
 		);
-	}
-
-	static class TestSecurityConfig {
-		@Bean
-		public JwtDecoder jwtDecoder() {
-			return mock(JwtDecoder.class);
-		}
 	}
 
 	@Test
