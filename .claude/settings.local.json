@@ -28,7 +28,9 @@
       "Bash(D:/dev/projects/isbtech/ai-codebase-analyzer/docker-compose.yml:*)",
       "mcp__idea__get_file_text_by_path",
       "mcp__idea__create_new_file",
-      "Bash(\"D:/dev/projects/isbtech/ai-codebase-analyzer/src/main/java/com/isbrain/codebaseanalyzer/service/AnalysisEventPublisher.java\":*)"
+      "Bash(\"D:/dev/projects/isbtech/ai-codebase-analyzer/src/main/java/com/isbrain/codebaseanalyzer/service/AnalysisEventPublisher.java\":*)",
+      "Bash(D:/dev/projects/isbtech/ai-codebase-analyzer/k8s/postgres.yml:*)",
+      "Bash(D:/dev/projects/isbtech/ai-codebase-analyzer/k8s/kafka.yml:*)"
     ]
   }
 }

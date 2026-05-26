@@ -20,7 +20,7 @@ public class SecurityConfig {
                         .requestMatchers("/", "/index.html", "/favicon.ico").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**").permitAll()
-                        .requestMatchers("/analyse/**").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers("/analyse/**").permitAll()
                         .requestMatchers("/reports/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
