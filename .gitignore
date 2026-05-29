@@ -35,3 +35,4 @@ build/
 ### Local config (contains API keys) ###
 application-local.yaml
 **/application-local.yaml
+.env

@@ -3,8 +3,8 @@ kind: Secret
 metadata:
   name: analyzer-secret
 type: Opaque
-data:
-  OPENAI_API_KEY: Y2hhbmdlLW1l  # base64 encoded "change-me"
+stringData:
+  OPENAI_API_KEY: REPLACE_WITH_YOUR_OPENAI_API_KEY
 
 ---
 apiVersion: apps/v1

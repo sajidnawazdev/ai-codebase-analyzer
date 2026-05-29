@@ -65,10 +65,21 @@ Requires Java 21.
 ```
 
 ### Option 3: Kubernetes deployment
+
+Before deploying, create the OpenAI API key secret:
+
+```bash
+kubectl create secret generic analyzer-secret \
+  --from-literal=OPENAI_API_KEY=sk-your-actual-key
+```
+
+Then apply the manifests:
+
 ```bash
 kubectl apply -f k8s/
 ```
-Deploys all services to a Kubernetes cluster.
+
+> **Note:** The `analyzer-secret` in `k8s/analyzer.yml` contains a placeholder value. The `kubectl create secret` command above will create the real secret. If you prefer, you can also edit `k8s/analyzer.yml` directly and replace `REPLACE_WITH_YOUR_OPENAI_API_KEY` with your actual key before applying.
 
 ### Then
 
@@ -181,6 +192,15 @@ export OPENAI_API_KEY=sk-your-actual-key
 
 ```bash
 docker run -p 8080:8080 -e OPENAI_API_KEY=sk-your-actual-key ai-codebase-analyzer
+```
+
+### Option D: Kubernetes
+
+Edit `k8s/analyzer.yml` and replace `REPLACE_WITH_YOUR_OPENAI_API_KEY` with your actual key, or create the secret via CLI:
+
+```bash
+kubectl create secret generic analyzer-secret \
+  --from-literal=OPENAI_API_KEY=sk-your-actual-key
 ```
 
 ---
