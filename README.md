@@ -31,6 +31,8 @@ Two microservices communicating via Kafka:
 
 Infrastructure: Kafka, Zookeeper, PostgreSQL, Keycloak — all defined in Docker Compose and Kubernetes manifests.
 
+**Monitoring:** Prometheus scrapes application metrics via Spring Actuator, visualized in Grafana dashboards. OpenTelemetry provides distributed tracing.
+
 ---
 
 ## How to Run
@@ -81,6 +83,21 @@ kubectl apply -f k8s/
 
 > **Note:** The `analyzer-secret` in `k8s/analyzer.yml` contains a placeholder value. The `kubectl create secret` command above will create the real secret. If you prefer, you can also edit `k8s/analyzer.yml` directly and replace `REPLACE_WITH_YOUR_OPENAI_API_KEY` with your actual key before applying.
 
+
+### Option 4: Azure AKS
+
+```bash
+az group create --name codebase-analyzer-rg --location westeurope
+az acr create --resource-group codebase-analyzer-rg --name codebaseanalyzeracr --sku Basic
+az aks create --resource-group codebase-analyzer-rg --name codebase-analyzer-aks --node-count 1 --node-vm-size standard_b2s_v2 --attach-acr codebaseanalyzeracr --generate-ssh-keys
+az aks get-credentials --resource-group codebase-analyzer-rg --name codebase-analyzer-aks
+
+# Push images to ACR
+az acr login --name codebaseanalyzeracr
+docker build -t codebaseanalyzeracr.azurecr.io/ai-codebase-analyzer:latest .
+docker push codebaseanalyzeracr.azurecr.io/ai-codebase-analyzer:latest
+kubectl apply -f k8s/
+```
 ### Then
 
 Open **http://localhost:8080** and enter a project path or Git URL.
@@ -123,8 +140,10 @@ https://github.com/spring-projects/spring-petclinic.git
 | **Git Cloning** | JGit |
 | **Diagrams** | Mermaid.js (CDN) |
 | **API Docs** | SpringDoc OpenAPI (Swagger) |
-| **Containerization** | Docker (multi-stage build) |
+| **Containerization** | Docker |
 | **Orchestration** | Kubernetes, Minikube |
+| **Monitoring** | Prometheus, Grafana, OpenTelemetry, Spring Actuator |
+| **Cloud** | Azure AKS, Azure Container Registry |
 
 ---
 
@@ -225,7 +244,15 @@ src/main/java/com/isbrain/codebaseanalyzer/
 src/main/resources/
   static/index.html  Single-page dashboard
   application.yaml   Configuration
-k8s/                    Kubernetes deployment manifests
+k8s/
+  analyzer.yml          Analyzer deployment + service
+  report-service.yml    Report service deployment
+  postgres.yml          PostgreSQL with secrets
+  kafka.yml             Kafka + Zookeeper
+  keycloak.yml          Identity provider
+  prometheus.yml        Metrics collection
+  grafana.yml           Dashboards
+  ingress.yml           External access
 docker-compose.yml      Local infrastructure (Kafka, PostgreSQL, Keycloak)
 ```
 
@@ -234,7 +261,6 @@ docker-compose.yml      Local infrastructure (Kafka, PostgreSQL, Keycloak)
 ## Future Improvements
 
 - Authentication flow in dashboard (login via Keycloak)
-- Azure AKS deployment with Azure Container Registry
 - Analysis result comparison between runs
 - Input validation and path sanitization
 - Support for additional languages beyond Java/Spring

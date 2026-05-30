@@ -23,8 +23,7 @@ spec:
     spec:
       containers:
         - name: analyzer
-          image: ai-codebase-analyzer:latest
-          imagePullPolicy: Never
+          image: codebaseanalyzeracr.azurecr.io/ai-codebase-analyzer:latest
           ports:
             - containerPort: 8080
           env:

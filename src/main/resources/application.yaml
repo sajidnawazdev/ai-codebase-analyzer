@@ -17,3 +17,15 @@ spring:
   ai:
     openai:
       api-key: ${OPENAI_API_KEY:your-api-key-here}
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  metrics:
+    export:
+      prometheus:
+        enabled: true

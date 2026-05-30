@@ -22,6 +22,7 @@ public class SecurityConfig {
                         .requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**").permitAll()
                         .requestMatchers("/analyse/**").permitAll()
                         .requestMatchers("/error").permitAll()
+                        .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/reports/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
