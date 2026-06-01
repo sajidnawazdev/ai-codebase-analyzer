@@ -1,0 +1,90 @@
+global:
+  security:
+    allowInsecureImages: true
+
+analyzer:
+  replicas: 1
+  profile: "nosecurity"
+  openaiApiKey: "REPLACE_WITH_YOUR_KEY"
+  image:
+    repository: ai-codebase-analyzer
+    tag: latest
+    pullPolicy: Never
+  service:
+    type: ClusterIP
+  kafka:
+    bootstrapServers: "codebase-analyzer-kafka:9092"
+  keycloak:
+    issuerUri: "http://codebase-analyzer-keycloak:8080/realms/codebase-analyzer"
+
+reportService:
+  replicas: 1
+  image:
+    repository: report-service
+    tag: latest
+    pullPolicy: Never
+  kafka:
+    bootstrapServers: "codebase-analyzer-kafka:9092"
+
+# Top-level PostgreSQL (shared instance)
+postgresql:
+  auth:
+    postgresPassword: postgres
+    username: reportuser
+    password: postgres
+    database: reports
+  primary:
+    initdb:
+      user: postgres
+      password: postgres
+      scripts:
+        create-keycloak-db.sql: |
+          CREATE USER bn_keycloak WITH PASSWORD 'keycloak123';
+          CREATE DATABASE bitnami_keycloak OWNER bn_keycloak;
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/postgresql
+    tag: "17.2.0-debian-12-r5"
+
+# Kafka subchart
+kafka:
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/kafka
+    tag: "3.9.0-debian-12-r6"
+  listeners:
+    client:
+      protocol: PLAINTEXT
+
+# Keycloak subchart - uses external (shared) PostgreSQL
+keycloak:
+  auth:
+    adminUser: admin
+    adminPassword: admin
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/keycloak
+    tag: "26.1.0-debian-12-r0"
+  livenessProbe:
+    initialDelaySeconds: 600
+    periodSeconds: 10
+    failureThreshold: 10
+  readinessProbe:
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    failureThreshold: 30
+  postgresql:
+    enabled: false
+  externalDatabase:
+    host: codebase-analyzer-postgresql
+    port: 5432
+    user: bn_keycloak
+    password: keycloak123
+    database: bitnami_keycloak
+
+prometheus:
+  server:
+    enabled: true
+
+grafana:
+  adminPassword: admin

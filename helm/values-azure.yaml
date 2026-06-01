@@ -1,0 +1,27 @@
+analyzer:
+  replicas: 1
+  image:
+    repository: codebaseanalyzeracr.azurecr.io/ai-codebase-analyzer
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: LoadBalancer
+
+reportService:
+  image:
+    repository: codebaseanalyzeracr.azurecr.io/report-service
+    tag: latest
+    pullPolicy: IfNotPresent
+
+kafka:
+  controller:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+    persistence:
+      size: 2Gi

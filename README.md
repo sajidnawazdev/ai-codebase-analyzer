@@ -18,7 +18,7 @@ Paste a Git URL or local path, get a full architecture report with scores, viola
 - **Generates AI-powered analysis** — sends structured metadata to an LLM, which returns a scored assessment with specific, actionable feedback referencing your actual class names.
 - **Event-driven architecture** — publishes analysis events to Kafka, consumed by a separate Report Service that stores results in PostgreSQL
 - **Secured API** — OAuth2/JWT authentication via Keycloak with role-based access control
-- **Kubernetes-ready** — full deployment manifests for all services including Ingress
+- **Kubernetes-ready** — Helm chart for all services including Ingress
 
 ---
 
@@ -29,7 +29,7 @@ Two microservices communicating via Kafka:
 - **Analyzer Service** (port 8080) — scans code, detects violations, calls AI, publishes events
 - **Report Service** (port 8081) — consumes Kafka events, stores analysis history in PostgreSQL
 
-Infrastructure: Kafka, Zookeeper, PostgreSQL, Keycloak — all defined in Docker Compose and Kubernetes manifests.
+Infrastructure: Kafka, Zookeeper, PostgreSQL, Keycloak — all defined in Docker Compose and Helm chart.
 
 **Monitoring:** Prometheus scrapes application metrics via Spring Actuator, visualized in Grafana dashboards. OpenTelemetry provides distributed tracing.
 
@@ -66,22 +66,12 @@ Requires Java 21.
 ./mvnw spring-boot:run
 ```
 
-### Option 3: Kubernetes deployment
-
-Before deploying, create the OpenAI API key secret:
+### Option 3: Kubernetes (Helm)
 
 ```bash
-kubectl create secret generic analyzer-secret \
-  --from-literal=OPENAI_API_KEY=sk-your-actual-key
+helm install codebase-analyzer ./helm \
+  --set analyzer.openaiApiKey=sk-your-actual-key
 ```
-
-Then apply the manifests:
-
-```bash
-kubectl apply -f k8s/
-```
-
-> **Note:** The `analyzer-secret` in `k8s/analyzer.yml` contains a placeholder value. The `kubectl create secret` command above will create the real secret. If you prefer, you can also edit `k8s/analyzer.yml` directly and replace `REPLACE_WITH_YOUR_OPENAI_API_KEY` with your actual key before applying.
 
 
 ### Option 4: Azure AKS
@@ -96,11 +86,22 @@ az aks get-credentials --resource-group codebase-analyzer-rg --name codebase-ana
 az acr login --name codebaseanalyzeracr
 docker build -t codebaseanalyzeracr.azurecr.io/ai-codebase-analyzer:latest .
 docker push codebaseanalyzeracr.azurecr.io/ai-codebase-analyzer:latest
-kubectl apply -f k8s/
+docker build -t codebaseanalyzeracr.azurecr.io/report-service:latest ./report-service
+docker push codebaseanalyzeracr.azurecr.io/report-service:latest
+helm install codebase-analyzer ./helm \
+  --set analyzer.openaiApiKey=sk-your-actual-key
 ```
 ### Then
 
 Open **http://localhost:8080** and enter a project path or Git URL.
+
+For Azure AKS, get the external IP:
+
+```bash
+kubectl get svc analyzer
+```
+
+Then open `http://EXTERNAL-IP:8080`.
 
 **Example inputs:**
 ```
@@ -141,7 +142,7 @@ https://github.com/spring-projects/spring-petclinic.git
 | **Diagrams** | Mermaid.js (CDN) |
 | **API Docs** | SpringDoc OpenAPI (Swagger) |
 | **Containerization** | Docker |
-| **Orchestration** | Kubernetes, Minikube |
+| **Orchestration** | Kubernetes, Helm, Minikube |
 | **Monitoring** | Prometheus, Grafana, OpenTelemetry, Spring Actuator |
 | **Cloud** | Azure AKS, Azure Container Registry |
 
@@ -213,13 +214,11 @@ export OPENAI_API_KEY=sk-your-actual-key
 docker run -p 8080:8080 -e OPENAI_API_KEY=sk-your-actual-key ai-codebase-analyzer
 ```
 
-### Option D: Kubernetes
-
-Edit `k8s/analyzer.yml` and replace `REPLACE_WITH_YOUR_OPENAI_API_KEY` with your actual key, or create the secret via CLI:
+### Option D: Kubernetes (Helm)
 
 ```bash
-kubectl create secret generic analyzer-secret \
-  --from-literal=OPENAI_API_KEY=sk-your-actual-key
+helm install codebase-analyzer ./helm \
+  --set analyzer.openaiApiKey=sk-your-actual-key
 ```
 
 ---
@@ -244,15 +243,14 @@ src/main/java/com/isbrain/codebaseanalyzer/
 src/main/resources/
   static/index.html  Single-page dashboard
   application.yaml   Configuration
-k8s/
-  analyzer.yml          Analyzer deployment + service
-  report-service.yml    Report service deployment
-  postgres.yml          PostgreSQL with secrets
-  kafka.yml             Kafka + Zookeeper
-  keycloak.yml          Identity provider
-  prometheus.yml        Metrics collection
-  grafana.yml           Dashboards
-  ingress.yml           External access
+helm/
+  Chart.yaml            Helm chart with dependencies (PostgreSQL, Kafka, Keycloak, Prometheus, Grafana)
+  values.yaml           Default configuration (Minikube)
+  values-azure.yaml     Azure AKS overrides
+  templates/
+    analyzer.yaml       Analyzer deployment + service + secret
+    report-service.yaml Report service deployment + service
+    ingress.yaml        External access
 docker-compose.yml      Local infrastructure (Kafka, PostgreSQL, Keycloak)
 ```
 
@@ -264,3 +262,4 @@ docker-compose.yml      Local infrastructure (Kafka, PostgreSQL, Keycloak)
 - Analysis result comparison between runs
 - Input validation and path sanitization
 - Support for additional languages beyond Java/Spring
+- Azure AKS deployment with custom domain and TLS

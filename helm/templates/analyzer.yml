@@ -4,15 +4,14 @@ metadata:
   name: analyzer-secret
 type: Opaque
 stringData:
-  OPENAI_API_KEY: REPLACE_WITH_YOUR_OPENAI_API_KEY
-
+  OPENAI_API_KEY: {{ .Values.analyzer.openaiApiKey | quote }}
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: analyzer
 spec:
-  replicas: 1
+  replicas: {{ .Values.analyzer.replicas }}
   selector:
     matchLabels:
       app: analyzer
@@ -23,26 +22,36 @@ spec:
     spec:
       containers:
         - name: analyzer
-          image: codebaseanalyzeracr.azurecr.io/ai-codebase-analyzer:latest
+          image: {{ .Values.analyzer.image.repository }}:{{ .Values.analyzer.image.tag }}
+          imagePullPolicy: {{ .Values.analyzer.image.pullPolicy | default "IfNotPresent" }}
           ports:
             - containerPort: 8080
+          resources:
+            requests:
+              memory: "256Mi"
+            limits:
+              memory: "512Mi"
           env:
+            - name: JAVA_TOOL_OPTIONS
+              value: "-Xmx384m"
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: analyzer-secret
                   key: OPENAI_API_KEY
             - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
-              value: "kafka:9092"
+              value: {{ .Values.analyzer.kafka.bootstrapServers | quote }}
+            - name: SPRING_PROFILES_ACTIVE
+              value: {{ .Values.analyzer.profile | quote }}
             - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI
-              value: "http://keycloak:8080/realms/codebase-analyzer"
-
+              value: {{ .Values.analyzer.keycloak.issuerUri | quote }}
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: analyzer
 spec:
+  type: {{ .Values.analyzer.service.type }}
   selector:
     app: analyzer
   ports:
