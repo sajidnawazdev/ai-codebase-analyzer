@@ -5,7 +5,7 @@ import java.util.List;
 public record FullAnalysisResponse(
 		AiAnalysisReport aiReport,
 		String mermaidDiagram,
-		List<String> violations,
+		List<ArchitectureObservation> observations,
 		ProjectAnalysisResult rawAnalysis
 ) {
 }

@@ -19,7 +19,7 @@ public class AiAnalysisService {
 	private final ObjectMapper objectMapper;
 
 	public AiAnalysisReport analyseWithAi(ProjectAnalysisResult result) {
-		String prompt = promptBuilderService.buildArchitecturePrompt(result, result.violations());
+		String prompt = promptBuilderService.buildArchitecturePrompt(result);
 
 		String aiResponse = chatClient
 				.prompt(prompt)
@@ -39,7 +39,7 @@ public class AiAnalysisService {
 		try {
 			String json = aiResponse.strip();
 			if (json.startsWith("```")) {
-				json = json.replaceAll("^```(?:json)?\\s*", "").replaceAll("\\s*```$", "");
+				json = json.replaceAll("^```(?:json)?\s*", "").replaceAll("\s*```$", "");
 			}
 			return objectMapper.readValue(json, AiAnalysisReport.class);
 		} catch (JsonProcessingException e) {

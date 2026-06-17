@@ -23,21 +23,31 @@ class PromptBuilderServiceTest {
 		return new ProjectAnalysisResult(
 				new AnalysisSummary(0, 0, 0, 0, 0, 0, 0, 0),
 				List.of(), List.of(), List.of(), List.of(),
-				List.of(), List.of(), List.of(), List.of(), List.of(),
-				List.of(), List.of(), ""
+				List.of(), List.of(), List.of(), List.of(), new ArchitectureRiskScore(0, 0, 0, 0, 0),
+				new ArchitectureScoreGuidance(Map.of(), List.of(), "No guidance."), List.of(), List.of(), ""
 		);
 	}
 
 	private ProjectAnalysisResult resultWith(AnalysisSummary summary, List<String> relationships,
 											 List<EndpointAnalysis> endpoints, List<PackageAnalysis> packages,
-											 List<String> violations, List<String> circularDeps,
-											 List<String> godClasses, List<String> emptyControllers,
-											 List<String> orphanServices, List<String> fatControllers,
+											 List<ClassMetrics> classMetrics,
+											 List<ArchitecturalHotspot> hotspots,
+											 List<ArchitectureObservation> observations,
 											 List<String> couplingRanking) {
 		return new ProjectAnalysisResult(
 				summary, relationships, endpoints, packages, List.of(),
-				violations, circularDeps, godClasses, emptyControllers, orphanServices,
-				fatControllers, couplingRanking, ""
+				classMetrics, hotspots, List.of(), observations, new ArchitectureRiskScore(15, 20, 25, 30, 35),
+				new ArchitectureScoreGuidance(Map.of("layering", 7, "dependencies", 7), List.of("test rule"), "Test guidance."),
+				List.of(new EvidenceBasedFinding(
+						"Controller-to-repository access",
+						FindingSeverity.LOW,
+						FindingConfidence.POSSIBLE,
+						List.of("OwnerController"),
+						List.of("OwnerController -> OwnerRepository"),
+						"Impact.",
+						"Recommendation."
+				)),
+				couplingRanking, ""
 		);
 	}
 
@@ -46,41 +56,40 @@ class PromptBuilderServiceTest {
 
 		@Test
 		void containsSystemRoleInstruction() {
-			var prompt = promptBuilder.buildArchitecturePrompt(emptyResult(), List.of());
-
+			var prompt = promptBuilder.buildArchitecturePrompt(emptyResult());
 			assertTrue(prompt.contains("You are a senior software architect"));
 		}
 
 		@Test
 		void containsAllSectionHeaders() {
-			var prompt = promptBuilder.buildArchitecturePrompt(emptyResult(), List.of());
-
+			var prompt = promptBuilder.buildArchitecturePrompt(emptyResult());
 			assertTrue(prompt.contains("Architecture Summary:"));
 			assertTrue(prompt.contains("Class Relationships:"));
 			assertTrue(prompt.contains("REST Endpoints:"));
 			assertTrue(prompt.contains("Package Structure:"));
-			assertTrue(prompt.contains("Detected Layer Violations:"));
-			assertTrue(prompt.contains("Detected Circular Dependencies:"));
-			assertTrue(prompt.contains("Detected God Classes:"));
-			assertTrue(prompt.contains("Detected Empty Controllers:"));
-			assertTrue(prompt.contains("Detected Orphan Services:"));
-			assertTrue(prompt.contains("Detected Fat Controllers:"));
+			assertTrue(prompt.contains("Architectural Hotspots"));
+			assertTrue(prompt.contains("Architecture Observations"));
 			assertTrue(prompt.contains("Top Coupled Classes"));
+			assertTrue(prompt.contains("Class Metrics"));
+			assertTrue(prompt.contains("Calculated Risk Scores"));
+			assertTrue(prompt.contains("Score Alignment Guidance"));
+			assertTrue(prompt.contains("Evidence-Based Findings"));
 		}
 
 		@Test
 		void containsJsonResponseFormat() {
-			var prompt = promptBuilder.buildArchitecturePrompt(emptyResult(), List.of());
-
+			var prompt = promptBuilder.buildArchitecturePrompt(emptyResult());
 			assertTrue(prompt.contains("\"overallAssessment\""));
 			assertTrue(prompt.contains("\"architectureScore\""));
 			assertTrue(prompt.contains("\"categoryScores\""));
+			assertTrue(prompt.contains("\"observationAnalysis\""));
+			assertTrue(prompt.contains("\"keyConcerns\""));
+			assertTrue(prompt.contains("\"findings\""));
 		}
 
 		@Test
 		void containsScoringGuide() {
-			var prompt = promptBuilder.buildArchitecturePrompt(emptyResult(), List.of());
-
+			var prompt = promptBuilder.buildArchitecturePrompt(emptyResult());
 			assertTrue(prompt.contains("Scoring guide:"));
 			assertTrue(prompt.contains("1-3: Critical issues"));
 		}
@@ -93,10 +102,8 @@ class PromptBuilderServiceTest {
 		void includesComponentCounts() {
 			var summary = new AnalysisSummary(2, 3, 1, 1, 1, 2, 0, 0);
 			var result = resultWith(summary, List.of(), List.of(), List.of(),
-					List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
-
-			var prompt = promptBuilder.buildArchitecturePrompt(result, List.of());
-
+					List.of(), List.of(), List.of(), List.of());
+			var prompt = promptBuilder.buildArchitecturePrompt(result);
 			assertTrue(prompt.contains("Controllers: 2"));
 			assertTrue(prompt.contains("Services: 3"));
 			assertTrue(prompt.contains("Repositories: 1"));
@@ -107,10 +114,8 @@ class PromptBuilderServiceTest {
 		void includesAllComponentTypes() {
 			var summary = new AnalysisSummary(1, 2, 3, 4, 5, 6, 7, 8);
 			var result = resultWith(summary, List.of(), List.of(), List.of(),
-					List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
-
-			var prompt = promptBuilder.buildArchitecturePrompt(result, List.of());
-
+					List.of(), List.of(), List.of(), List.of());
+			var prompt = promptBuilder.buildArchitecturePrompt(result);
 			assertTrue(prompt.contains("Components: 4"));
 			assertTrue(prompt.contains("Configurations: 5"));
 			assertTrue(prompt.contains("ControllerAdvices: 7"));
@@ -127,23 +132,18 @@ class PromptBuilderServiceTest {
 					new AnalysisSummary(0, 0, 0, 0, 0, 0, 0, 0),
 					List.of("Controller -> Service", "Service -> Repository"),
 					List.of(), List.of(),
-					List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
-
-			var prompt = promptBuilder.buildArchitecturePrompt(result, List.of());
-
+					List.of(), List.of(), List.of(), List.of());
+			var prompt = promptBuilder.buildArchitecturePrompt(result);
 			assertTrue(prompt.contains("Controller -> Service"));
 			assertTrue(prompt.contains("Service -> Repository"));
 		}
 
 		@Test
 		void showsNoneWhenNoRelationships() {
-			var prompt = promptBuilder.buildArchitecturePrompt(emptyResult(), List.of());
-
-			// The "Class Relationships:" section should contain "None"
+			var prompt = promptBuilder.buildArchitecturePrompt(emptyResult());
 			int sectionStart = prompt.indexOf("Class Relationships:");
 			int sectionEnd = prompt.indexOf("REST Endpoints:");
 			String section = prompt.substring(sectionStart, sectionEnd);
-
 			assertTrue(section.contains("None"));
 		}
 	}
@@ -160,22 +160,18 @@ class PromptBuilderServiceTest {
 			var result = resultWith(
 					new AnalysisSummary(0, 0, 0, 0, 0, 0, 0, 0),
 					List.of(), endpoints, List.of(),
-					List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
-
-			var prompt = promptBuilder.buildArchitecturePrompt(result, List.of());
-
+					List.of(), List.of(), List.of(), List.of());
+			var prompt = promptBuilder.buildArchitecturePrompt(result);
 			assertTrue(prompt.contains("GET /users -> UserController.getAll()"));
 			assertTrue(prompt.contains("POST /users -> UserController.create()"));
 		}
 
 		@Test
 		void showsNoneWhenNoEndpoints() {
-			var prompt = promptBuilder.buildArchitecturePrompt(emptyResult(), List.of());
-
+			var prompt = promptBuilder.buildArchitecturePrompt(emptyResult());
 			int sectionStart = prompt.indexOf("REST Endpoints:");
 			int sectionEnd = prompt.indexOf("Package Structure:");
 			String section = prompt.substring(sectionStart, sectionEnd);
-
 			assertTrue(section.contains("None"));
 		}
 	}
@@ -192,124 +188,145 @@ class PromptBuilderServiceTest {
 			var result = resultWith(
 					new AnalysisSummary(0, 0, 0, 0, 0, 0, 0, 0),
 					List.of(), List.of(), packages,
-					List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
-
-			var prompt = promptBuilder.buildArchitecturePrompt(result, List.of());
-
+					List.of(), List.of(), List.of(), List.of());
+			var prompt = promptBuilder.buildArchitecturePrompt(result);
 			assertTrue(prompt.contains("com.app.controller (2 classes)"));
 		}
 
 		@Test
 		void showsNoneWhenNoPackages() {
-			var prompt = promptBuilder.buildArchitecturePrompt(emptyResult(), List.of());
-
+			var prompt = promptBuilder.buildArchitecturePrompt(emptyResult());
 			int sectionStart = prompt.indexOf("Package Structure:");
-			int sectionEnd = prompt.indexOf("Detected Layer Violations:");
+			int sectionEnd = prompt.indexOf("Architectural Hotspots");
 			String section = prompt.substring(sectionStart, sectionEnd);
-
 			assertTrue(section.contains("None"));
 		}
 	}
 
 	@Nested
-	class ViolationFormatting {
+	class ObservationFormatting {
 
 		@Test
-		void formatsLayerViolations() {
-			var violations = List.of("Controller -> Repository: bypasses service layer");
-
-			var prompt = promptBuilder.buildArchitecturePrompt(emptyResult(), violations);
-
-			assertTrue(prompt.contains("Controller -> Repository: bypasses service layer"));
-		}
-
-		@Test
-		void showsNoViolationsDetectedWhenEmpty() {
-			var prompt = promptBuilder.buildArchitecturePrompt(emptyResult(), List.of());
-
-			int sectionStart = prompt.indexOf("Detected Layer Violations:");
-			int sectionEnd = prompt.indexOf("Detected Circular Dependencies:");
-			String section = prompt.substring(sectionStart, sectionEnd);
-
-			assertTrue(section.contains("No violations detected."));
-		}
-
-		@Test
-		void formatsCircularDependencies() {
+		void formatsObservations() {
+			var observations = List.of(
+					new ArchitectureObservation("LAYERING", "OwnerController",
+							"OwnerController accesses OwnerRepository directly.", 60, true)
+			);
 			var result = resultWith(
 					new AnalysisSummary(0, 0, 0, 0, 0, 0, 0, 0),
 					List.of(), List.of(), List.of(),
-					List.of(), List.of("Circular: A -> B -> A"), List.of(),
-					List.of(), List.of(), List.of(), List.of());
-
-			var prompt = promptBuilder.buildArchitecturePrompt(result, List.of());
-
-			assertTrue(prompt.contains("Circular: A -> B -> A"));
+					List.of(), List.of(), observations, List.of());
+			var prompt = promptBuilder.buildArchitecturePrompt(result);
+			assertTrue(prompt.contains("LAYERING"));
+			assertTrue(prompt.contains("OwnerController"));
+			assertTrue(prompt.contains("confidence: 60"));
+			assertTrue(prompt.contains("findingConfidence: POSSIBLE"));
+			assertTrue(prompt.contains("severity: MEDIUM"));
+			assertTrue(prompt.contains("heuristic: yes"));
 		}
 
 		@Test
-		void formatsGodClasses() {
+		void showsNoObservationsWhenEmpty() {
+			var prompt = promptBuilder.buildArchitecturePrompt(emptyResult());
+			assertTrue(prompt.contains("No observations."));
+		}
+	}
+
+	@Nested
+	class HotspotFormatting {
+
+		@Test
+		void formatsHotspots() {
+			var hotspots = List.of(
+					new ArchitecturalHotspot("OrderService", "HIGH_COUPLING", 8,
+							"OrderService depends on 8 collaborators.")
+			);
 			var result = resultWith(
 					new AnalysisSummary(0, 0, 0, 0, 0, 0, 0, 0),
 					List.of(), List.of(), List.of(),
-					List.of(), List.of(), List.of("God class: MegaService — 12 methods"),
-					List.of(), List.of(), List.of(), List.of());
-
-			var prompt = promptBuilder.buildArchitecturePrompt(result, List.of());
-
-			assertTrue(prompt.contains("God class: MegaService"));
+					List.of(), hotspots, List.of(), List.of());
+			var prompt = promptBuilder.buildArchitecturePrompt(result);
+			assertTrue(prompt.contains("HIGH_COUPLING"));
+			assertTrue(prompt.contains("OrderService"));
+			assertTrue(prompt.contains("risk: 8"));
 		}
 
 		@Test
-		void formatsEmptyControllers() {
-			var result = resultWith(
-					new AnalysisSummary(0, 0, 0, 0, 0, 0, 0, 0),
-					List.of(), List.of(), List.of(),
-					List.of(), List.of(), List.of(),
-					List.of("Empty controller: HealthController"), List.of(), List.of(), List.of());
-
-			var prompt = promptBuilder.buildArchitecturePrompt(result, List.of());
-
-			assertTrue(prompt.contains("Empty controller: HealthController"));
+		void showsNoHotspotsWhenEmpty() {
+			var prompt = promptBuilder.buildArchitecturePrompt(emptyResult());
+			assertTrue(prompt.contains("No hotspots detected."));
 		}
+	}
+
+	@Nested
+	class ClassMetricsFormatting {
 
 		@Test
-		void formatsOrphanServices() {
+		void formatsClassMetrics() {
+			var metrics = List.of(
+					new ClassMetrics("OrderService", "com.app.service", ComponentType.SERVICE,
+							22, 14, 10, 8, 8, 540)
+			);
 			var result = resultWith(
 					new AnalysisSummary(0, 0, 0, 0, 0, 0, 0, 0),
 					List.of(), List.of(), List.of(),
-					List.of(), List.of(), List.of(), List.of(),
-					List.of("Orphan service: DeadService"), List.of(), List.of());
-
-			var prompt = promptBuilder.buildArchitecturePrompt(result, List.of());
-
-			assertTrue(prompt.contains("Orphan service: DeadService"));
+					metrics, List.of(), List.of(), List.of());
+			var prompt = promptBuilder.buildArchitecturePrompt(result);
+			assertTrue(prompt.contains("OrderService"));
+			assertTrue(prompt.contains("methods=22"));
+			assertTrue(prompt.contains("publicMethods=14"));
+			assertTrue(prompt.contains("dependencies=8"));
+			assertTrue(prompt.contains("lines=540"));
 		}
+	}
 
-		@Test
-		void formatsFatControllers() {
-			var result = resultWith(
-					new AnalysisSummary(0, 0, 0, 0, 0, 0, 0, 0),
-					List.of(), List.of(), List.of(),
-					List.of(), List.of(), List.of(), List.of(), List.of(),
-					List.of("Fat controller: AdminController — 11 endpoints"), List.of());
-
-			var prompt = promptBuilder.buildArchitecturePrompt(result, List.of());
-
-			assertTrue(prompt.contains("Fat controller: AdminController"));
-		}
+	@Nested
+	class CouplingFormatting {
 
 		@Test
 		void formatsCouplingRanking() {
 			var result = resultWith(
 					new AnalysisSummary(0, 0, 0, 0, 0, 0, 0, 0),
 					List.of(), List.of(), List.of(),
-					List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
+					List.of(), List.of(), List.of(),
 					List.of("ProjectScannerService: coupling score 8"));
-
-			var prompt = promptBuilder.buildArchitecturePrompt(result, List.of());
-
+			var prompt = promptBuilder.buildArchitecturePrompt(result);
 			assertTrue(prompt.contains("ProjectScannerService: coupling score 8"));
+		}
+	}
+
+	@Nested
+	class RiskScoreFormatting {
+
+		@Test
+		void formatsCalculatedRiskScores() {
+			var prompt = promptBuilder.buildArchitecturePrompt(emptyResult());
+			assertTrue(prompt.contains("Layering Risk: 0"));
+			assertTrue(prompt.contains("Coupling Risk: 0"));
+			assertTrue(prompt.contains("Modularity Risk: 0"));
+			assertTrue(prompt.contains("Maintainability Risk: 0"));
+			assertTrue(prompt.contains("Scalability Risk: 0"));
+		}
+
+		@Test
+		void tellsModelToUseCalculatedRiskScores() {
+			var prompt = promptBuilder.buildArchitecturePrompt(emptyResult());
+			assertTrue(prompt.contains("Use the calculated risk scores when determining category scores"));
+			assertTrue(prompt.contains("A simple architecture is not automatically a poor architecture"));
+		}
+
+		@Test
+		void includesScoreAlignmentRulesAndEvidenceFindings() {
+			var result = resultWith(
+					new AnalysisSummary(0, 0, 0, 0, 0, 0, 0, 0),
+					List.of(), List.of(), List.of(),
+					List.of(), List.of(), List.of(), List.of()
+			);
+			var prompt = promptBuilder.buildArchitecturePrompt(result);
+			assertTrue(prompt.contains("layering >= 7"));
+			assertTrue(prompt.contains("test rule"));
+			assertTrue(prompt.contains("Controller-to-repository access"));
+			assertTrue(prompt.contains("OwnerController -> OwnerRepository"));
 		}
 	}
 }

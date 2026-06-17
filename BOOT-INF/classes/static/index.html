@@ -440,125 +440,6 @@
   }
 
   .coupling-text { font-size: 0.9rem; }
-
-  .muted {
-    color: var(--text-secondary);
-    font-size: 0.86rem;
-  }
-
-  /* Evidence-based findings */
-  .finding-list {
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-  }
-
-  .finding {
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 18px;
-    background: color-mix(in srgb, var(--surface) 88%, var(--accent-light));
-  }
-
-  .finding-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 14px;
-    margin-bottom: 14px;
-  }
-
-  .finding-title {
-    font-size: 1rem;
-    font-weight: 700;
-    color: var(--text);
-  }
-
-  .finding-meta {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-  }
-
-  .finding-pill {
-    padding: 3px 9px;
-    border-radius: 999px;
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.03em;
-    background: var(--accent-light);
-    color: var(--accent);
-    white-space: nowrap;
-  }
-
-  .finding-pill.severity-CRITICAL,
-  .finding-pill.severity-HIGH { background: #fee2e2; color: #991b1b; }
-  .finding-pill.severity-MEDIUM { background: #ffedd5; color: #9a3412; }
-  .finding-pill.severity-LOW,
-  .finding-pill.severity-INFO { background: #ecfdf5; color: #065f46; }
-
-  @media (prefers-color-scheme: dark) {
-    .finding-pill.severity-CRITICAL,
-    .finding-pill.severity-HIGH { background: #450a0a; color: #fca5a5; }
-    .finding-pill.severity-MEDIUM { background: #431407; color: #fdba74; }
-    .finding-pill.severity-LOW,
-    .finding-pill.severity-INFO { background: #052e16; color: #86efac; }
-  }
-
-  .finding-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 16px;
-    margin-bottom: 14px;
-  }
-
-  .finding-block h3 {
-    font-size: 0.78rem;
-    font-weight: 700;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    margin-bottom: 8px;
-  }
-
-  .finding-block ul {
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .finding-block li {
-    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
-    font-size: 0.82rem;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 7px 9px;
-    word-break: break-word;
-  }
-
-  .finding-text {
-    display: grid;
-    gap: 12px;
-  }
-
-  .finding-text p {
-    font-size: 0.9rem;
-    color: var(--text);
-  }
-
-  .legacy-observations {
-    margin-top: 12px;
-  }
-
-  .legacy-observations summary {
-    cursor: pointer;
-    color: var(--text-secondary);
-    font-size: 0.88rem;
-    font-weight: 600;
-  }
 </style>
 </head>
 <body>
@@ -643,243 +524,6 @@
     return '<ul class="item-list ' + cls + '">' + items.map(i => '<li>' + esc(i) + '</li>').join('') + '</ul>';
   }
 
-  function renderInlineList(items) {
-    if (!items || items.length === 0) return '<p class="empty-state">None.</p>';
-    return '<ul>' + items.map(i => '<li>' + esc(i) + '</li>').join('') + '</ul>';
-  }
-
-  function renderFindings(findings) {
-    if (!findings || findings.length === 0) {
-      return '<p class="empty-state">No evidence-based findings.</p>';
-    }
-
-    let html = '<div class="finding-list">';
-    findings.forEach((finding, index) => {
-      const severity = finding.severity || 'INFO';
-      const confidence = finding.confidence || 'POSSIBLE';
-      const category = finding.category || 'DESIGN';
-      const priority = getPriorityScore(finding);
-      html += '<article class="finding">';
-      html += '<div class="finding-header">';
-      html += '<div class="finding-title">' + (index + 1) + '. ' + esc(finding.title || 'Finding') + '</div>';
-      html += '<div class="finding-meta">';
-      html += '<span class="finding-pill">Priority: ' + priority + '</span>';
-      html += '<span class="finding-pill">Category: ' + esc(category) + '</span>';
-      html += '<span class="finding-pill severity-' + esc(severity) + '">Severity: ' + esc(severity) + '</span>';
-      html += '<span class="finding-pill">Confidence: ' + esc(confidence) + '</span>';
-      html += '</div></div>';
-      html += '<div class="finding-grid">';
-      html += '<div class="finding-block"><h3>Affected Classes</h3>' + renderInlineList(finding.affectedClasses) + '</div>';
-      html += '<div class="finding-block"><h3>Evidence</h3>' + renderInlineList(finding.evidence) + '</div>';
-      html += '</div>';
-      html += '<div class="finding-text">';
-      html += '<div class="finding-block"><h3>Impact</h3><p>' + esc(finding.impact || '') + '</p></div>';
-      html += '<div class="finding-block"><h3>Recommendation</h3><p>' + esc(finding.recommendation || '') + '</p></div>';
-      html += '</div>';
-      html += '</article>';
-    });
-    html += '</div>';
-    return html;
-  }
-
-  function renderFindingsByCategory(findings) {
-    if (!findings || findings.length === 0) {
-      return '<p class="empty-state">No evidence-based findings.</p>';
-    }
-
-    const groups = {};
-    sortedFindings(findings).forEach(finding => {
-      const category = finding.category || 'DESIGN';
-      if (!groups[category]) groups[category] = [];
-      groups[category].push(finding);
-    });
-
-    return Object.entries(groups)
-      .map(([category, categoryFindings]) =>
-        '<div class="violation-section"><h3>' + esc(toTitle(category)) + ' Findings</h3>' +
-        renderFindings(categoryFindings) + '</div>')
-      .join('');
-  }
-
-  function renderTopFindings(findings) {
-    const top = sortedFindings(findings).slice(0, 5);
-    if (top.length === 0) return '<p class="empty-state">No prioritized findings.</p>';
-
-    let html = '';
-    top.forEach((finding, index) => {
-      html += '<div class="coupling-item">';
-      html += '<div class="coupling-rank">' + (index + 1) + '</div>';
-      html += '<div class="coupling-text"><strong>' + esc(finding.title || 'Finding') + '</strong><br>';
-      html += 'Priority: ' + getPriorityScore(finding);
-      if (finding.evidence && finding.evidence.length > 0) {
-        html += '<br><span class="muted">' + esc(finding.evidence[0]) + '</span>';
-      }
-      html += '</div></div>';
-    });
-    return html;
-  }
-
-  function renderRecommendedRefactorings(findings, fallbackItems) {
-    const recommendations = sortedFindings(findings)
-      .filter(finding => finding.recommendation)
-      .map(finding => ({ priority: getPriorityScore(finding), text: finding.recommendation }));
-
-    if (recommendations.length === 0) {
-      return renderList(fallbackItems, 'improvements');
-    }
-
-    let html = '<ul class="item-list improvements">';
-    recommendations.forEach(item => {
-      html += '<li><strong>Priority ' + item.priority + '</strong><br>' + esc(item.text) + '</li>';
-    });
-    html += '</ul>';
-    return html;
-  }
-
-  function renderExecutiveSummary(raw, architecturalFindings) {
-    const style = raw && raw.architectureStyleAssessment ? raw.architectureStyleAssessment.primary : (raw && raw.architectureStyle) || 'UNKNOWN';
-    const topRisks = sortedRiskAreas(raw && raw.riskAreas).slice(0, 3);
-    const topFinding = sortedFindings(architecturalFindings)[0];
-
-    let html = '<div class="finding-text">';
-    html += '<p><strong>Architecture style:</strong> ' + esc(style) + '</p>';
-    if (topRisks.length > 0) {
-      html += '<p><strong>Top risk areas:</strong> ' + esc(topRisks.map(area => area.name + ' ' + area.level).join(', ')) + '</p>';
-    }
-    if (topFinding) {
-      html += '<p><strong>Highest priority finding:</strong> ' + esc(topFinding.title) + ' (Priority ' + getPriorityScore(topFinding) + ')</p>';
-    }
-    html += '<p>' + esc(executiveSummaryText(style, topRisks, topFinding)) + '</p>';
-    html += '</div>';
-    return html;
-  }
-
-  function executiveSummaryText(style, topRisks, topFinding) {
-    if (style === 'SIMPLE_CRUD') {
-      return 'The project appears to follow a simple CRUD architecture. Recommendations should focus on growth-sensitive risks rather than large architectural refactors.';
-    }
-    if (topRisks && topRisks.length > 0) {
-      return 'The main architectural risks are concentrated in the listed risk areas. Review the highest priority findings before lower-level analyzer evidence.';
-    }
-    if (topFinding) {
-      return 'The report found a small number of prioritized architectural concerns. Start with the highest priority finding.';
-    }
-    return 'No significant architectural risk areas were detected from the current static analysis signals.';
-  }
-
-  function renderArchitectureStyle(raw) {
-    const assessment = raw && raw.architectureStyleAssessment;
-    const primary = assessment ? assessment.primary : ((raw && raw.architectureStyle) || 'UNKNOWN');
-    const confidence = assessment ? assessment.confidence : 'POSSIBLE';
-    const reasoning = assessment ? assessment.reasoning : [];
-
-    let html = '<div class="finding">';
-    html += '<div class="finding-header">';
-    html += '<div class="finding-title">Primary: ' + esc(primary) + '</div>';
-    html += '<div class="finding-meta"><span class="finding-pill">Confidence: ' + esc(confidence) + '</span></div>';
-    html += '</div>';
-    html += '<div class="finding-block"><h3>Reasoning</h3>' + renderInlineList(reasoning) + '</div>';
-    html += '</div>';
-    return html;
-  }
-
-  function renderRiskAreas(riskAreas) {
-    if (!riskAreas || riskAreas.length === 0) {
-      return '<p class="empty-state">No risk areas available.</p>';
-    }
-
-    let html = '<div class="finding-list">';
-    sortedRiskAreas(riskAreas).forEach(area => {
-      html += '<article class="finding">';
-      html += '<div class="finding-header">';
-      html += '<div class="finding-title">' + esc(area.name) + ' Risk</div>';
-      html += '<div class="finding-meta"><span class="finding-pill severity-' + riskSeverityClass(area.level) + '">Level: ' + esc(area.level) + '</span></div>';
-      html += '</div>';
-      html += '<div class="finding-text"><p>' + esc(area.summary || '') + '</p></div>';
-      if (area.findings && area.findings.length > 0) {
-        html += '<div class="finding-block"><h3>Evidence</h3>';
-        html += '<ul>' + area.findings.map(finding => '<li>' + esc(finding.title) + '</li>').join('') + '</ul>';
-        html += '</div>';
-      }
-      html += '</article>';
-    });
-    html += '</div>';
-    return html;
-  }
-
-  function sortedRiskAreas(riskAreas) {
-    return [...(riskAreas || [])].sort((a, b) => riskLevelWeight(b.level) - riskLevelWeight(a.level));
-  }
-
-  function riskLevelWeight(level) {
-    switch (level || 'LOW') {
-      case 'CRITICAL': return 4;
-      case 'HIGH': return 3;
-      case 'MEDIUM': return 2;
-      default: return 1;
-    }
-  }
-
-  function riskSeverityClass(level) {
-    switch (level || 'LOW') {
-      case 'CRITICAL': return 'CRITICAL';
-      case 'HIGH': return 'HIGH';
-      case 'MEDIUM': return 'MEDIUM';
-      default: return 'LOW';
-    }
-  }
-
-  function sortedFindings(findings) {
-    return [...(findings || [])].sort((a, b) => getPriorityScore(b) - getPriorityScore(a));
-  }
-
-  function getPriorityScore(finding) {
-    if (finding && typeof finding.priority === 'number') {
-      return finding.priority;
-    }
-    if (finding && finding.priority && typeof finding.priority.score === 'number') {
-      return finding.priority.score;
-    }
-    return Math.floor(severityWeight(finding && finding.severity) * confidenceMultiplier(finding && finding.confidence));
-  }
-
-  function severityWeight(severity) {
-    switch (severity || 'INFO') {
-      case 'CRITICAL': return 100;
-      case 'HIGH': return 75;
-      case 'MEDIUM': return 50;
-      case 'LOW': return 25;
-      default: return 10;
-    }
-  }
-
-  function confidenceMultiplier(confidence) {
-    switch (confidence || 'POSSIBLE') {
-      case 'CONFIRMED': return 1.0;
-      case 'LIKELY': return 0.8;
-      default: return 0.5;
-    }
-  }
-
-  function toTitle(value) {
-    return String(value || '')
-      .toLowerCase()
-      .replace(/_/g, ' ')
-      .replace(/\b\w/g, c => c.toUpperCase());
-  }
-
-  function mergeFindings(rawFindings, aiFindings) {
-    const merged = [];
-    const seen = new Set();
-    [...(rawFindings || []), ...(aiFindings || [])].forEach(finding => {
-      const key = (finding.title || '').toLowerCase();
-      if (!key || seen.has(key)) return;
-      seen.add(key);
-      merged.push(finding);
-    });
-    return merged;
-  }
-
   function esc(s) {
     const d = document.createElement('div');
     d.textContent = s;
@@ -896,13 +540,7 @@
 
     let html = '';
 
-    const evidenceFindings = mergeFindings(raw && raw.evidenceBasedFindings, ai.findings);
-    const architecturalFindings = raw && raw.mergedFindings && raw.mergedFindings.length > 0
-      ? raw.mergedFindings
-      : evidenceFindings;
-    const topArchitecturalFindings = sortedFindings(architecturalFindings).slice(0, 5);
-
-    // Score
+    // Score + Assessment
     html += '<div class="card"><div class="score-hero">';
     html += '<div class="score-circle">';
     html += '<svg width="120" height="120" viewBox="0 0 120 120">';
@@ -911,17 +549,8 @@
     html += '</svg>';
     html += '<div class="score-number">' + score + '<span>/10</span></div>';
     html += '</div>';
-    html += '<div class="assessment-text">Architecture score generated from AI review and deterministic analyzer signals.</div>';
+    html += '<div class="assessment-text">' + esc(ai.overallAssessment) + '</div>';
     html += '</div></div>';
-
-    // Executive summary
-    html += '<div class="card"><h2>Executive Summary</h2>' + renderExecutiveSummary(raw, architecturalFindings) + '</div>';
-
-    // Architecture style
-    html += '<div class="card"><h2>Detected Architecture Style</h2>' + renderArchitectureStyle(raw) + '</div>';
-
-    // Risk areas
-    html += '<div class="card"><h2>Risk Areas</h2>' + renderRiskAreas(raw && raw.riskAreas) + '</div>';
 
     // Category scores
     html += '<div class="card"><h2>Category Scores</h2><div class="category-grid">';
@@ -951,22 +580,14 @@
       html += '</div></div>';
     }
 
-    // Top architectural findings
-    html += '<div class="card"><h2>Top Architectural Findings</h2>' + renderFindings(topArchitecturalFindings);
-    if (raw && raw.evidenceBasedFindings && raw.evidenceBasedFindings.length > 0) {
-      html += '<details class="legacy-observations"><summary>Show analyzer evidence details</summary>';
-      html += renderFindingsByCategory(raw.evidenceBasedFindings);
-      html += '</details>';
-    }
-    if (ai.observationAnalysis && ai.observationAnalysis.length > 0) {
-      html += '<details class="legacy-observations"><summary>Show raw observations</summary>';
-      html += '<ul class="item-list neutral">' + ai.observationAnalysis.map(i => '<li>' + esc(i) + '</li>').join('') + '</ul>';
-      html += '</details>';
-    }
-    html += '</div>';
+    // Strengths
+    html += '<div class="card"><h2>Strengths</h2>' + renderList(ai.strengths, 'strengths') + '</div>';
 
-    // Recommended refactorings
-    html += '<div class="card"><h2>Recommended Refactorings</h2>' + renderRecommendedRefactorings(architecturalFindings, ai.improvements) + '</div>';
+    // Critical issues
+    html += '<div class="card"><h2>Key Concerns</h2>' + renderList(ai.keyConcerns || ai.criticalIssues, 'issues') + '</div>';
+
+    // Improvements
+    html += '<div class="card"><h2>Improvements</h2>' + renderList(ai.improvements, 'improvements') + '</div>';
 
     // Coupling ranking
     if (raw && raw.couplingRanking && raw.couplingRanking.length > 0) {
@@ -976,6 +597,15 @@
       });
       html += '</div>';
     }
+
+    // Observation analysis
+    html += '<div class="card"><h2>Observation Analysis</h2>';
+    if (!ai.observationAnalysis || ai.observationAnalysis.length === 0) {
+      html += '<p class="empty-state">No observations.</p>';
+    } else {
+      html += '<ul class="item-list neutral">' + ai.observationAnalysis.map(i => '<li>' + esc(i) + '</li>').join('') + '</ul>';
+    }
+    html += '</div>';
 
     // Endpoints
     if (raw && raw.endpoints && raw.endpoints.length > 0) {

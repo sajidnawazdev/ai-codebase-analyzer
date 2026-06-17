@@ -18,8 +18,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 @Slf4j
@@ -59,22 +57,14 @@ public class AnalysisController {
 			ProjectAnalysisResult result = projectScannerService.analyseProject(scanPath);
 			AiAnalysisReport aiReport = aiAnalysisService.analyseWithAi(result);
 
-			List<String> allViolations = new ArrayList<>();
-			allViolations.addAll(result.violations());
-			allViolations.addAll(result.circularDependencies());
-			allViolations.addAll(result.godClasses());
-			allViolations.addAll(result.emptyControllers());
-			allViolations.addAll(result.orphanServices());
-			allViolations.addAll(result.fatControllers());
-
 			FullAnalysisResponse response = new FullAnalysisResponse(
 					aiReport,
 					result.mermaidDiagram(),
-					allViolations,
+					result.observations(),
 					result
 			);
 
-			publishEventAsync(aiReport, allViolations.size(), scanPath);
+			publishEventAsync(aiReport, result.observations().size(), scanPath);
 
 			return response;
 		} finally {
@@ -83,14 +73,14 @@ public class AnalysisController {
 	}
 
 	private void publishEventAsync(AiAnalysisReport aiReport,
-								   int violationCount, String projectPath) {
+								   int observationCount, String projectPath) {
 		String projectName = Paths.get(projectPath).getFileName().toString();
 		AnalysisCompletedEvent event = new AnalysisCompletedEvent(
 				projectName,
 				projectPath,
 				aiReport.architectureScore(),
 				aiReport.categoryScores(),
-				violationCount,
+				observationCount,
 				LocalDateTime.now()
 		);
 		CompletableFuture.runAsync(() -> analysisEventPublisher.publish(event))

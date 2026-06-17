@@ -54,13 +54,14 @@ class AnalysisControllerTest {
 				List.of(new EndpointAnalysis("UserController", "/users", "GET", "/users", "getAll")),
 				List.of(new PackageAnalysis("com.app.controller", 1, Map.of(ComponentType.REST_CONTROLLER, 1L))),
 				List.of(),
-				List.of("No layer violations detected"),
 				List.of(),
 				List.of(),
 				List.of(),
 				List.of(),
+				new ArchitectureRiskScore(0, 0, 0, 0, 0),
+				new ArchitectureScoreGuidance(Map.of(), List.of(), "No guidance."),
 				List.of(),
-				List.of("UserService (SERVICE) — coupling score: 3 (outgoing: 1, incoming: 2)"),
+				List.of("UserService (SERVICE) - coupling score: 3 (outgoing: 1, incoming: 2)"),
 				"graph TD\n  Controller --> Service\n"
 		);
 	}
@@ -83,12 +84,10 @@ class AnalysisControllerTest {
 				.andExpect(jsonPath("$.endpoints[0].httpMethod").value("GET"))
 				.andExpect(jsonPath("$.endpoints[0].controllerName").value("UserController"))
 				.andExpect(jsonPath("$.packages").isArray())
-				.andExpect(jsonPath("$.violations").isArray())
-				.andExpect(jsonPath("$.circularDependencies").isArray())
-				.andExpect(jsonPath("$.godClasses").isArray())
-				.andExpect(jsonPath("$.emptyControllers").isArray())
-				.andExpect(jsonPath("$.orphanServices").isArray())
-				.andExpect(jsonPath("$.fatControllers").isArray())
+				.andExpect(jsonPath("$.observations").isArray())
+				.andExpect(jsonPath("$.hotspots").isArray())
+				.andExpect(jsonPath("$.boundaryFindings").isArray())
+				.andExpect(jsonPath("$.classMetrics").isArray())
 				.andExpect(jsonPath("$.couplingRanking").isArray())
 				.andExpect(jsonPath("$.mermaidDiagram").isString());
 	}
@@ -108,7 +107,7 @@ class AnalysisControllerTest {
 				"Well structured project", 8,
 				List.of("Clean layering"), List.of(), List.of("Add more tests"),
 				Map.of("layering", 8, "modularity", 7),
-				List.of(), List.of(), List.of(), List.of(), List.of(), List.of()
+				List.of(), List.of()
 		));
 
 		mockMvc.perform(post("/analyse/ai")
@@ -118,8 +117,9 @@ class AnalysisControllerTest {
 				.andExpect(jsonPath("$.aiReport.overallAssessment").value("Well structured project"))
 				.andExpect(jsonPath("$.aiReport.architectureScore").value(8))
 				.andExpect(jsonPath("$.aiReport.strengths[0]").value("Clean layering"))
+				.andExpect(jsonPath("$.aiReport.keyConcerns").isArray())
 				.andExpect(jsonPath("$.mermaidDiagram").isString())
-				.andExpect(jsonPath("$.violations").isArray())
+				.andExpect(jsonPath("$.observations").isArray())
 				.andExpect(jsonPath("$.rawAnalysis").isNotEmpty());
 	}
 }

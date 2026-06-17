@@ -2,9 +2,12 @@ package com.isbrain.codebaseanalyzer.service;
 
 import com.github.javaparser.JavaParser;
 import com.github.javaparser.ParserConfiguration;
+import com.github.javaparser.ast.Modifier;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
+import com.github.javaparser.ast.body.ConstructorDeclaration;
 import com.github.javaparser.ast.body.TypeDeclaration;
 import com.isbrain.codebaseanalyzer.model.ClassAnalysis;
+import com.isbrain.codebaseanalyzer.model.ClassMetrics;
 import com.isbrain.codebaseanalyzer.model.ComponentType;
 import com.isbrain.codebaseanalyzer.model.EndpointAnalysis;
 import lombok.RequiredArgsConstructor;
@@ -77,7 +80,12 @@ public class ClassAnalyserService {
 					})
 					.toList();
 
-			return new JavaFileAnalysis(classes, endpoints);
+			var metrics = typeDeclarations
+					.stream()
+					.map(typeDeclaration -> toClassMetrics(typeDeclaration, packageName))
+					.toList();
+
+			return new JavaFileAnalysis(classes, endpoints, metrics);
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}
@@ -134,6 +142,53 @@ public class ClassAnalyserService {
 				superClass,
 				implementedInterfaces,
 				0
+		);
+	}
+
+	private ClassMetrics toClassMetrics(TypeDeclaration<?> typeDeclaration, String packageName) {
+		var annotations = typeDeclaration.getAnnotations()
+				.stream()
+				.map(a -> a.getName().asString())
+				.toList();
+
+		int methodCount = typeDeclaration.getMethods().size();
+
+		int publicMethodCount = (int) typeDeclaration.getMethods()
+				.stream()
+				.filter(m -> m.getModifiers().stream()
+						.anyMatch(mod -> mod.getKeyword() == Modifier.Keyword.PUBLIC))
+				.count();
+
+		int fieldCount = typeDeclaration.getFields().size();
+
+		int dependencyCount = (int) typeDeclaration.getFields()
+				.stream()
+				.filter(field -> field.isPrivate() && field.isFinal())
+				.flatMap(field -> field.getVariables()
+						.stream()
+						.filter(variable -> variable.getInitializer().isEmpty()))
+				.count();
+
+		int constructorParameterCount = typeDeclaration.findAll(ConstructorDeclaration.class)
+				.stream()
+				.mapToInt(c -> c.getParameters().size())
+				.max()
+				.orElse(0);
+
+		int lineCount = typeDeclaration.getEnd()
+				.map(end -> end.line - typeDeclaration.getBegin().map(b -> b.line).orElse(1) + 1)
+				.orElse(0);
+
+		return new ClassMetrics(
+				typeDeclaration.getName().asString(),
+				packageName,
+				detectComponentType(annotations),
+				methodCount,
+				publicMethodCount,
+				fieldCount,
+				dependencyCount,
+				constructorParameterCount,
+				lineCount
 		);
 	}
 
@@ -201,6 +256,7 @@ public class ClassAnalyserService {
 		return ComponentType.UNKNOWN;
 	}
 
-	public record JavaFileAnalysis(List<ClassAnalysis> classes, List<EndpointAnalysis> endpoints) {
+	public record JavaFileAnalysis(List<ClassAnalysis> classes, List<EndpointAnalysis> endpoints,
+								   List<ClassMetrics> metrics) {
 	}
 }

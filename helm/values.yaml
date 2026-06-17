@@ -48,6 +48,10 @@ postgresql:
 
 # Kafka subchart
 kafka:
+  controller:
+    replicaCount: 1
+    persistence:
+      size: 2Gi
   image:
     registry: docker.io
     repository: bitnamilegacy/kafka

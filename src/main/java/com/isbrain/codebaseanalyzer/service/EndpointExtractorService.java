@@ -70,8 +70,57 @@ public class EndpointExtractorService {
 				basePath,
 				httpMethod,
 				joinPaths(basePath, methodPath),
-				method.getName().asString()
+				method.getName().asString(),
+				method.getType().asString(),
+				method.getParameters().stream()
+						.map(parameter -> parameter.getType().asString())
+						.toList(),
+				method.getParameters().stream()
+						.map(parameter -> parameter.getName().asString())
+						.toList(),
+				hasCollectionResponseSignal(method)
 		));
+	}
+
+	private boolean hasCollectionResponseSignal(MethodDeclaration method) {
+		String returnType = method.getType().asString();
+		if (isCollectionReturnType(returnType)) {
+			return true;
+		}
+		if (isCollectionHandlerName(method.getName().asString())) {
+			return true;
+		}
+		return method.getBody()
+				.map(body -> {
+					String bodyText = body.toString().toLowerCase();
+					return bodyText.contains("addattribute")
+							&& (bodyText.contains("list")
+							|| bodyText.contains("collection")
+							|| bodyText.contains("iterable")
+							|| bodyText.contains("findall")
+							|| bodyText.contains("findby")
+							|| bodyText.contains("results")
+							|| bodyText.contains("selections"));
+				})
+				.orElse(false);
+	}
+
+	private boolean isCollectionReturnType(String returnType) {
+		String normalized = returnType.replace("[]", "Array").toLowerCase();
+		return normalized.startsWith("list<")
+				|| normalized.startsWith("page<")
+				|| normalized.startsWith("slice<")
+				|| normalized.startsWith("collection<")
+				|| normalized.startsWith("iterable<")
+				|| normalized.endsWith("array");
+	}
+
+	private boolean isCollectionHandlerName(String methodName) {
+		String normalized = methodName.toLowerCase();
+		return normalized.contains("findall")
+				|| normalized.contains("list")
+				|| normalized.contains("search")
+				|| normalized.contains("getall");
 	}
 
 	private Optional<String> extractPath(AnnotationExpr annotation) {

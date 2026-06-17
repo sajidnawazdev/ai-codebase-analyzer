@@ -4,13 +4,16 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.isbrain.codebaseanalyzer.model.ArchitectureObservation;
 import com.isbrain.codebaseanalyzer.model.ClassAnalysis;
+import com.isbrain.codebaseanalyzer.model.ClassMetrics;
 import com.isbrain.codebaseanalyzer.model.ProjectAnalysisResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,8 +24,17 @@ public class ProjectScannerService {
 
 	private final ClassAnalyserService classAnalyserService;
 	private final SummaryBuilderService summaryBuilderService;
-	private final ViolationDetectorService violationDetectorService;
+	private final ArchitectureObservationDetectorService observationDetectorService;
 	private final MermaidGeneratorService mermaidGeneratorService;
+	private final ArchitectureHotspotAnalyzer architectureHotspotAnalyzer;
+	private final ArchitectureRiskScorer architectureRiskScorer;
+	private final ArchitectureScoreAlignmentService architectureScoreAlignmentService;
+	private final EvidenceFindingBuilder evidenceFindingBuilder;
+	private final DependencyDirectionAnalyzer dependencyDirectionAnalyzer;
+	private final SpringSpecificAnalyzer springSpecificAnalyzer;
+	private final FindingMergeService findingMergeService;
+	private final ArchitectureStyleClassifier architectureStyleClassifier;
+	private final RiskAreaAggregator riskAreaAggregator;
 
 	public List<Path> scanJavaFiles(String projectPath) {
 		try (var paths = Files.walk(Path.of(projectPath))) {
@@ -53,6 +65,9 @@ public class ProjectScannerService {
 				.toList();
 		var endpoints = fileAnalyses.stream()
 				.flatMap(fileAnalysis -> fileAnalysis.endpoints().stream())
+				.toList();
+		var classMetrics = fileAnalyses.stream()
+				.flatMap(fileAnalysis -> fileAnalysis.metrics().stream())
 				.toList();
 
 		var rawClasses = classAnalyserService.resolveHierarchyTypes(parsedClasses);
@@ -104,12 +119,26 @@ public class ProjectScannerService {
 				})
 				.toList();
 
-		List<String> violations = violationDetectorService.detect(classes);
-		List<String> circularDependencies = violationDetectorService.detectCircularDependencies(classes);
-		List<String> godClasses = violationDetectorService.detectGodClasses(classes);
-		List<String> emptyControllers = violationDetectorService.detectEmptyControllers(classes, endpoints);
-		List<String> orphanServices = violationDetectorService.detectOrphanServices(classes);
-		List<String> fatControllers = violationDetectorService.detectFatControllers(classes, endpoints);
+		List<ArchitectureObservation> observations = new ArrayList<>();
+		observations.addAll(observationDetectorService.detect(classes));
+		observations.addAll(observationDetectorService.detectCircularDependencies(classes));
+		observations.addAll(observationDetectorService.detectGodClasses(classes, classMetrics));
+		observations.addAll(observationDetectorService.detectEmptyControllers(classes, endpoints));
+		observations.addAll(observationDetectorService.detectOrphanServices(classes));
+		observations.addAll(observationDetectorService.detectFatControllers(classes, endpoints, classMetrics));
+		observations.addAll(springSpecificAnalyzer.detectListEndpointsWithoutPagination(endpoints));
+
+		var summary = summaryBuilderService.buildSummary(classes);
+		var packages = summaryBuilderService.buildPackages(classes);
+		var architectureStyleAssessment = architectureStyleClassifier.assess(summary, classes, endpoints, packages);
+		var architectureStyle = architectureStyleAssessment.primary();
+		var hotspots = architectureHotspotAnalyzer.analyze(classMetrics);
+		var boundaryFindings = dependencyDirectionAnalyzer.analyze(classes);
+		var riskScore = architectureRiskScorer.score(observations, classMetrics, classes);
+		var scoreGuidance = architectureScoreAlignmentService.align(observations, hotspots, classes);
+		var evidenceBasedFindings = evidenceFindingBuilder.build(observations);
+		var mergedFindings = findingMergeService.merge(evidenceBasedFindings);
+		var riskAreas = riskAreaAggregator.aggregate(mergedFindings, riskScore, architectureStyle);
 
 		List<String> couplingRanking = classes.stream()
 				.filter(clazz -> clazz.couplingScore() > 0)
@@ -118,24 +147,29 @@ public class ProjectScannerService {
 				.map(clazz -> {
 					int outgoing = clazz.dependencies().size();
 					int incoming = clazz.couplingScore() - outgoing;
-					return "%s (%s) — coupling score: %d (outgoing: %d, incoming: %d)".formatted(
+					return "%s (%s) - coupling score: %d (outgoing: %d, incoming: %d)".formatted(
 							clazz.className(), clazz.componentType(),
 							clazz.couplingScore(), outgoing, incoming);
 				})
 				.toList();
 
 		return new ProjectAnalysisResult(
-				summaryBuilderService.buildSummary(classes),
+				summary,
 				summaryBuilderService.buildRelationships(classes),
 				endpoints,
-				summaryBuilderService.buildPackages(classes),
+				packages,
 				classes,
-				violations.isEmpty() ? List.of("No layer violations detected") : violations,
-				circularDependencies,
-				godClasses,
-				emptyControllers,
-				orphanServices,
-				fatControllers,
+				classMetrics,
+				hotspots,
+				boundaryFindings,
+				observations,
+				architectureStyle,
+				architectureStyleAssessment,
+				riskScore,
+				scoreGuidance,
+				evidenceBasedFindings,
+				mergedFindings,
+				riskAreas,
 				couplingRanking,
 				mermaidGeneratorService.generateDiagram(classes)
 		);

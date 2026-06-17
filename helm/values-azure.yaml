@@ -3,7 +3,7 @@ analyzer:
   image:
     repository: codebaseanalyzeracr.azurecr.io/ai-codebase-analyzer
     tag: latest
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
   service:
     type: LoadBalancer
 

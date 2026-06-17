@@ -16,11 +16,22 @@ class SelfScanIntegrationTest {
 		var endpointExtractor = new EndpointExtractorService();
 		var classAnalyser = new ClassAnalyserService(endpointExtractor);
 		var summaryBuilder = new SummaryBuilderService();
-		var violationDetector = new ViolationDetectorService();
+		var observationDetector = new ArchitectureObservationDetectorService();
 		var mermaidGenerator = new MermaidGeneratorService();
+		var hotspotAnalyzer = new ArchitectureHotspotAnalyzer();
+		var riskScorer = new ArchitectureRiskScorer();
+		var scoreAlignmentService = new ArchitectureScoreAlignmentService();
+		var evidenceFindingBuilder = new EvidenceFindingBuilder();
+		var dependencyDirectionAnalyzer = new DependencyDirectionAnalyzer();
+		var springSpecificAnalyzer = new SpringSpecificAnalyzer();
+		var findingMergeService = new FindingMergeService();
+		var architectureStyleClassifier = new ArchitectureStyleClassifier();
+		var riskAreaAggregator = new RiskAreaAggregator();
 
 		scannerService = new ProjectScannerService(
-				classAnalyser, summaryBuilder, violationDetector, mermaidGenerator);
+				classAnalyser, summaryBuilder, observationDetector, mermaidGenerator, hotspotAnalyzer, riskScorer,
+				scoreAlignmentService, evidenceFindingBuilder, dependencyDirectionAnalyzer, springSpecificAnalyzer,
+				findingMergeService, architectureStyleClassifier, riskAreaAggregator);
 	}
 
 	@Test
@@ -33,7 +44,15 @@ class SelfScanIntegrationTest {
 		assertNotNull(result.endpoints());
 		assertNotNull(result.packages());
 		assertNotNull(result.classes());
-		assertNotNull(result.violations());
+		assertNotNull(result.observations());
+		assertNotNull(result.boundaryFindings());
+		assertNotNull(result.riskScore());
+		assertNotNull(result.scoreGuidance());
+		assertNotNull(result.evidenceBasedFindings());
+		assertNotNull(result.mergedFindings());
+		assertNotNull(result.architectureStyle());
+		assertNotNull(result.architectureStyleAssessment());
+		assertNotNull(result.riskAreas());
 		assertNotNull(result.mermaidDiagram());
 	}
 
