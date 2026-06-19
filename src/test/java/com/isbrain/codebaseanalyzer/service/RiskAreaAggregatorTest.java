@@ -1,6 +1,8 @@
 package com.isbrain.codebaseanalyzer.service;
 
 import com.isbrain.codebaseanalyzer.model.ArchitectureRiskScore;
+import com.isbrain.codebaseanalyzer.model.ArchitecturalHotspot;
+import com.isbrain.codebaseanalyzer.model.ArchitectureObservation;
 import com.isbrain.codebaseanalyzer.model.ArchitectureStyle;
 import com.isbrain.codebaseanalyzer.model.FindingConfidence;
 import com.isbrain.codebaseanalyzer.model.FindingSeverity;
@@ -52,5 +54,73 @@ class RiskAreaAggregatorTest {
 		assertEquals(RiskLevel.LOW, layering.level());
 		assertEquals(List.of(finding), layering.findings());
 		assertTrue(layering.summary().contains("simple CRUD architecture"));
+	}
+
+	@Test
+	void keepsSimpleCrudControllerRepositoryLayeringRiskLowDespiteMediumScore() {
+		var observations = List.of(
+				layeringObservation("OwnerController", "OwnerRepository"),
+				layeringObservation("VisitController", "VisitRepository"),
+				layeringObservation("PetController", "PetRepository"),
+				layeringObservation("VetController", "VetRepository"),
+				layeringObservation("SpecialtyController", "SpecialtyRepository")
+		);
+
+		var areas = aggregator.aggregate(
+				List.of(),
+				new ArchitectureRiskScore(25, 0, 0, 0, 0),
+				ArchitectureStyle.SIMPLE_CRUD,
+				observations,
+				List.of(new ArchitecturalHotspot("OwnerController", "CONTROLLER", 6, "below significant threshold"))
+		);
+
+		var layering = areas.stream()
+				.filter(area -> area.name().equals("Layering"))
+				.findFirst()
+				.orElseThrow();
+
+		assertEquals(RiskLevel.LOW, layering.level());
+	}
+
+	@Test
+	void doesNotLowerSimpleCrudLayeringRiskWhenCircularDependenciesExist() {
+		var areas = aggregator.aggregate(
+				List.of(),
+				new ArchitectureRiskScore(25, 0, 0, 0, 0),
+				ArchitectureStyle.SIMPLE_CRUD,
+				List.of(
+						layeringObservation("OwnerController", "OwnerRepository"),
+						new ArchitectureObservation(
+								"CIRCULAR_DEPENDENCY",
+								"OwnerService",
+								"OwnerService and VisitService depend on each other.",
+								85,
+								false,
+								FindingConfidence.CONFIRMED,
+								FindingSeverity.HIGH
+						)
+				),
+				List.of()
+		);
+
+		var layering = areas.stream()
+				.filter(area -> area.name().equals("Layering"))
+				.findFirst()
+				.orElseThrow();
+
+		assertEquals(RiskLevel.MEDIUM, layering.level());
+	}
+
+	private ArchitectureObservation layeringObservation(String source, String repository) {
+		return new ArchitectureObservation(
+				"LAYERING",
+				source,
+				"%s accesses %s directly. Determine whether this is an intentional architectural choice or a layering concern."
+						.formatted(source, repository),
+				60,
+				true,
+				FindingConfidence.POSSIBLE,
+				FindingSeverity.LOW
+		);
 	}
 }

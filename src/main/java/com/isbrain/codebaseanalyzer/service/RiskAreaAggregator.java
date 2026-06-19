@@ -1,7 +1,11 @@
 package com.isbrain.codebaseanalyzer.service;
 
 import com.isbrain.codebaseanalyzer.model.ArchitectureRiskScore;
+import com.isbrain.codebaseanalyzer.model.ArchitecturalHotspot;
+import com.isbrain.codebaseanalyzer.model.ArchitectureObservation;
 import com.isbrain.codebaseanalyzer.model.ArchitectureStyle;
+import com.isbrain.codebaseanalyzer.model.FindingConfidence;
+import com.isbrain.codebaseanalyzer.model.FindingSeverity;
 import com.isbrain.codebaseanalyzer.model.MergedFinding;
 import com.isbrain.codebaseanalyzer.model.RiskArea;
 import com.isbrain.codebaseanalyzer.model.RiskLevel;
@@ -17,8 +21,18 @@ public class RiskAreaAggregator {
 			ArchitectureRiskScore riskScore,
 			ArchitectureStyle architectureStyle
 	) {
+		return aggregate(findings, riskScore, architectureStyle, List.of(), List.of());
+	}
+
+	public List<RiskArea> aggregate(
+			List<MergedFinding> findings,
+			ArchitectureRiskScore riskScore,
+			ArchitectureStyle architectureStyle,
+			List<ArchitectureObservation> observations,
+			List<ArchitecturalHotspot> hotspots
+	) {
 		return List.of(
-				riskArea("Layering", levelFor(riskScore.layeringRisk()),
+				riskArea("Layering", layeringLevel(riskScore, architectureStyle, observations, hotspots),
 						filter(findings, "layer", "repository", "service abstraction"),
 						layeringSummary(architectureStyle)),
 				riskArea("Coupling", levelFor(riskScore.couplingRisk()),
@@ -59,8 +73,44 @@ public class RiskAreaAggregator {
 		return RiskLevel.LOW;
 	}
 
+	private RiskLevel layeringLevel(
+			ArchitectureRiskScore riskScore,
+			ArchitectureStyle architectureStyle,
+			List<ArchitectureObservation> observations,
+			List<ArchitecturalHotspot> hotspots
+	) {
+		if (architectureStyle == ArchitectureStyle.SIMPLE_CRUD
+				&& hasOnlyControllerToRepositoryLayeringAccess(observations)
+				&& hasNoCircularDependencies(observations)
+				&& hasNoSignificantHotspots(hotspots)) {
+			return RiskLevel.LOW;
+		}
+		return levelFor(riskScore.layeringRisk());
+	}
+
+	private boolean hasOnlyControllerToRepositoryLayeringAccess(List<ArchitectureObservation> observations) {
+		List<ArchitectureObservation> layeringObservations = observations.stream()
+				.filter(observation -> observation.type().equals("LAYERING"))
+				.toList();
+		return !layeringObservations.isEmpty()
+				&& layeringObservations.stream()
+				.allMatch(observation -> observation.description().contains(" accesses ")
+						&& observation.findingConfidence() == FindingConfidence.POSSIBLE
+						&& (observation.severity() == FindingSeverity.LOW || observation.severity() == FindingSeverity.INFO));
+	}
+
+	private boolean hasNoCircularDependencies(List<ArchitectureObservation> observations) {
+		return observations.stream()
+				.noneMatch(observation -> observation.type().equals("CIRCULAR_DEPENDENCY"));
+	}
+
+	private boolean hasNoSignificantHotspots(List<ArchitecturalHotspot> hotspots) {
+		return hotspots.stream()
+				.noneMatch(hotspot -> hotspot.riskScore() >= 7);
+	}
+
 	private RiskLevel springPracticeLevel(List<MergedFinding> findings) {
-		int maxPriority = filter(findings, "pagination", "transactional", "repository").stream()
+		int maxPriority = filter(findings, "pagination", "transactional", "repository", "injection").stream()
 				.mapToInt(MergedFinding::priority)
 				.max()
 				.orElse(0);

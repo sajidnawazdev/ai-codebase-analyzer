@@ -34,6 +34,7 @@ public class ProjectScannerService {
 	private final SpringSpecificAnalyzer springSpecificAnalyzer;
 	private final FindingMergeService findingMergeService;
 	private final ArchitectureStyleClassifier architectureStyleClassifier;
+	private final ArchitectureMaturityClassifier architectureMaturityClassifier;
 	private final RiskAreaAggregator riskAreaAggregator;
 
 	public List<Path> scanJavaFiles(String projectPath) {
@@ -127,18 +128,24 @@ public class ProjectScannerService {
 		observations.addAll(observationDetectorService.detectOrphanServices(classes));
 		observations.addAll(observationDetectorService.detectFatControllers(classes, endpoints, classMetrics));
 		observations.addAll(springSpecificAnalyzer.detectListEndpointsWithoutPagination(endpoints));
+		observations.addAll(springSpecificAnalyzer.detectBestPracticeIssues(
+				fileAnalyses.stream()
+						.map(ClassAnalyserService.JavaFileAnalysis::path)
+						.toList()
+		));
 
 		var summary = summaryBuilderService.buildSummary(classes);
 		var packages = summaryBuilderService.buildPackages(classes);
 		var architectureStyleAssessment = architectureStyleClassifier.assess(summary, classes, endpoints, packages);
 		var architectureStyle = architectureStyleAssessment.primary();
+		var architectureMaturity = architectureMaturityClassifier.classify(classes, packages);
 		var hotspots = architectureHotspotAnalyzer.analyze(classMetrics);
 		var boundaryFindings = dependencyDirectionAnalyzer.analyze(classes);
 		var riskScore = architectureRiskScorer.score(observations, classMetrics, classes);
 		var scoreGuidance = architectureScoreAlignmentService.align(observations, hotspots, classes);
-		var evidenceBasedFindings = evidenceFindingBuilder.build(observations);
-		var mergedFindings = findingMergeService.merge(evidenceBasedFindings);
-		var riskAreas = riskAreaAggregator.aggregate(mergedFindings, riskScore, architectureStyle);
+		var evidenceBasedFindings = evidenceFindingBuilder.build(observations, architectureMaturity, architectureStyle);
+		var mergedFindings = findingMergeService.merge(evidenceBasedFindings, architectureMaturity, architectureStyle);
+		var riskAreas = riskAreaAggregator.aggregate(mergedFindings, riskScore, architectureStyle, observations, hotspots);
 
 		List<String> couplingRanking = classes.stream()
 				.filter(clazz -> clazz.couplingScore() > 0)
@@ -171,7 +178,8 @@ public class ProjectScannerService {
 				mergedFindings,
 				riskAreas,
 				couplingRanking,
-				mermaidGeneratorService.generateDiagram(classes)
+				mermaidGeneratorService.generateDiagram(classes),
+				architectureMaturity
 		);
 	}
 }

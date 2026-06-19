@@ -85,7 +85,7 @@ public class ClassAnalyserService {
 					.map(typeDeclaration -> toClassMetrics(typeDeclaration, packageName))
 					.toList();
 
-			return new JavaFileAnalysis(classes, endpoints, metrics);
+			return new JavaFileAnalysis(path, classes, endpoints, metrics);
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}
@@ -256,7 +256,7 @@ public class ClassAnalyserService {
 		return ComponentType.UNKNOWN;
 	}
 
-	public record JavaFileAnalysis(List<ClassAnalysis> classes, List<EndpointAnalysis> endpoints,
+	public record JavaFileAnalysis(Path path, List<ClassAnalysis> classes, List<EndpointAnalysis> endpoints,
 								   List<ClassMetrics> metrics) {
 	}
 }

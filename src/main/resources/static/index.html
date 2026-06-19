@@ -674,6 +674,7 @@
       html += '</div>';
       html += '<div class="finding-text">';
       html += '<div class="finding-block"><h3>Impact</h3><p>' + esc(finding.impact || '') + '</p></div>';
+      html += renderFindingImpact(finding.findingImpact);
       html += '<div class="finding-block"><h3>Recommendation</h3><p>' + esc(finding.recommendation || '') + '</p></div>';
       html += '</div>';
       html += '</article>';
@@ -699,6 +700,16 @@
         '<div class="violation-section"><h3>' + esc(toTitle(category)) + ' Findings</h3>' +
         renderFindings(categoryFindings) + '</div>')
       .join('');
+  }
+
+  function renderFindingImpact(impact) {
+    if (!impact) return '';
+    let html = '<div class="finding-block"><h3>Consequence</h3>';
+    html += '<p><strong>Short-term:</strong> ' + esc(impact.shortTermImpact || '') + '</p>';
+    html += '<p><strong>Long-term:</strong> ' + esc(impact.longTermImpact || '') + '</p>';
+    html += '<p><strong>Growth risk:</strong> ' + esc(impact.growthRisk || 'LOW') + '</p>';
+    html += '</div>';
+    return html;
   }
 
   function renderTopFindings(findings) {
@@ -738,11 +749,13 @@
 
   function renderExecutiveSummary(raw, architecturalFindings) {
     const style = raw && raw.architectureStyleAssessment ? raw.architectureStyleAssessment.primary : (raw && raw.architectureStyle) || 'UNKNOWN';
+    const maturity = (raw && raw.architectureMaturity) || 'UNKNOWN';
     const topRisks = sortedRiskAreas(raw && raw.riskAreas).slice(0, 3);
     const topFinding = sortedFindings(architecturalFindings)[0];
 
     let html = '<div class="finding-text">';
     html += '<p><strong>Architecture style:</strong> ' + esc(style) + '</p>';
+    html += '<p><strong>Architecture maturity:</strong> ' + esc(maturity) + '</p>';
     if (topRisks.length > 0) {
       html += '<p><strong>Top risk areas:</strong> ' + esc(topRisks.map(area => area.name + ' ' + area.level).join(', ')) + '</p>';
     }
@@ -776,7 +789,8 @@
     let html = '<div class="finding">';
     html += '<div class="finding-header">';
     html += '<div class="finding-title">Primary: ' + esc(primary) + '</div>';
-    html += '<div class="finding-meta"><span class="finding-pill">Confidence: ' + esc(confidence) + '</span></div>';
+    html += '<div class="finding-meta"><span class="finding-pill">Confidence: ' + esc(confidence) + '</span>';
+    html += '<span class="finding-pill">Maturity: ' + esc((raw && raw.architectureMaturity) || 'UNKNOWN') + '</span></div>';
     html += '</div>';
     html += '<div class="finding-block"><h3>Reasoning</h3>' + renderInlineList(reasoning) + '</div>';
     html += '</div>';

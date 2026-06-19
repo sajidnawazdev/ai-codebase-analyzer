@@ -1,6 +1,9 @@
 package com.isbrain.codebaseanalyzer.service;
 
+import com.isbrain.codebaseanalyzer.model.ArchitectureMaturity;
+import com.isbrain.codebaseanalyzer.model.ArchitectureStyle;
 import com.isbrain.codebaseanalyzer.model.EvidenceBasedFinding;
+import com.isbrain.codebaseanalyzer.model.FindingImpact;
 import com.isbrain.codebaseanalyzer.model.FindingConfidence;
 import com.isbrain.codebaseanalyzer.model.FindingSeverity;
 import com.isbrain.codebaseanalyzer.model.MergedFinding;
@@ -18,6 +21,14 @@ import java.util.Set;
 public class FindingMergeService {
 
 	public List<MergedFinding> merge(List<EvidenceBasedFinding> findings) {
+		return merge(findings, ArchitectureMaturity.PROTOTYPE, ArchitectureStyle.UNKNOWN);
+	}
+
+	public List<MergedFinding> merge(
+			List<EvidenceBasedFinding> findings,
+			ArchitectureMaturity maturity,
+			ArchitectureStyle architectureStyle
+	) {
 		Map<String, List<EvidenceBasedFinding>> findingsByFingerprint = new LinkedHashMap<>();
 		for (EvidenceBasedFinding finding : findings) {
 			findingsByFingerprint.computeIfAbsent(fingerprint(finding), ignored -> new ArrayList<>())
@@ -26,12 +37,16 @@ public class FindingMergeService {
 
 		return findingsByFingerprint.values()
 				.stream()
-				.map(this::toMergedFinding)
+				.map(group -> toMergedFinding(group, maturity, architectureStyle))
 				.sorted(Comparator.comparingInt(MergedFinding::priority).reversed())
 				.toList();
 	}
 
-	private MergedFinding toMergedFinding(List<EvidenceBasedFinding> findings) {
+	private MergedFinding toMergedFinding(
+			List<EvidenceBasedFinding> findings,
+			ArchitectureMaturity maturity,
+			ArchitectureStyle architectureStyle
+	) {
 		Set<String> affectedClasses = new LinkedHashSet<>();
 		List<String> evidence = new ArrayList<>();
 		for (EvidenceBasedFinding finding : findings) {
@@ -47,8 +62,14 @@ public class FindingMergeService {
 		FindingConfidence confidence = strongestConfidence(findings);
 		String title = mergedTitle(findings.get(0));
 		int priority = mergedPriority(findings, affectedClasses.size());
+		FindingImpact findingImpact = strongestImpact(findings);
 
 		if (title.equals("Controller-to-Repository Access Pattern")) {
+			findingImpact = new FindingImpact(
+					"No meaningful impact.",
+					"Business rules may become duplicated across controllers.",
+					com.isbrain.codebaseanalyzer.model.RiskLevel.LOW
+			);
 			return new MergedFinding(
 					title,
 					severity,
@@ -56,8 +77,9 @@ public class FindingMergeService {
 					priority,
 					affectedClasses,
 					evidence,
-					"Current design is acceptable for a small CRUD application. Future business logic may become harder to centralize if it grows across controllers.",
-					"Introduce application services only if transactional, reusable, or shared business logic emerges."
+					controllerRepositoryImpact(maturity, architectureStyle),
+					controllerRepositoryRecommendation(maturity, architectureStyle),
+					findingImpact
 			);
 		}
 
@@ -69,7 +91,8 @@ public class FindingMergeService {
 				affectedClasses,
 				evidence,
 				mergeText(findings.stream().map(EvidenceBasedFinding::impact).toList()),
-				mergeText(findings.stream().map(EvidenceBasedFinding::recommendation).toList())
+				mergeText(findings.stream().map(EvidenceBasedFinding::recommendation).toList()),
+				findingImpact
 		);
 	}
 
@@ -126,5 +149,29 @@ public class FindingMergeService {
 
 	private String normalizedTitle(String title) {
 		return title == null ? "" : title.toLowerCase().replaceAll("[^a-z0-9]+", "_");
+	}
+
+	private FindingImpact strongestImpact(List<EvidenceBasedFinding> findings) {
+		return findings.stream()
+				.map(EvidenceBasedFinding::findingImpact)
+				.filter(impact -> impact != null)
+				.max(Comparator.comparingInt(impact -> impact.growthRisk().ordinal()))
+				.orElse(FindingImpact.none());
+	}
+
+	private String controllerRepositoryImpact(ArchitectureMaturity maturity, ArchitectureStyle architectureStyle) {
+		if (architectureStyle == ArchitectureStyle.SIMPLE_CRUD
+				&& (maturity == ArchitectureMaturity.PROTOTYPE || maturity == ArchitectureMaturity.EARLY_STAGE)) {
+			return "Current design is appropriate for an early-stage CRUD application. No meaningful short-term impact.";
+		}
+		return "Current design is acceptable for a CRUD application. Future business logic may become harder to centralize if it grows across controllers.";
+	}
+
+	private String controllerRepositoryRecommendation(ArchitectureMaturity maturity, ArchitectureStyle architectureStyle) {
+		if (architectureStyle == ArchitectureStyle.SIMPLE_CRUD
+				&& (maturity == ArchitectureMaturity.PROTOTYPE || maturity == ArchitectureMaturity.EARLY_STAGE)) {
+			return "Avoid premature abstraction. Keep the current design until business rules become reusable, transactional, or shared.";
+		}
+		return "Introduce application services only if transactional, reusable, or shared business logic emerges.";
 	}
 }

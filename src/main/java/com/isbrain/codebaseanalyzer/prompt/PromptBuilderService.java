@@ -51,6 +51,9 @@ public class PromptBuilderService {
 				
 				Detected Architecture Style:
 				%s
+
+				Architecture Maturity:
+				%s
 				
 				Architectural Hotspots (heuristically identified risk areas):
 				%s
@@ -90,6 +93,7 @@ public class PromptBuilderService {
 				If the project is small, CRUD-oriented, has no circular dependencies, no significant hotspots, and only possible/low-severity concerns, prefer this overall assessment wording: "The architecture demonstrates a simple, reasonable structure for a small CRUD-oriented Spring Boot application, with low-severity risks that should be monitored if the project grows."
 				Findings already include calculated priority scores. Higher priority findings should dominate key concerns and recommended refactorings. Do not let low-priority findings dominate the report.
 				If Detected Architecture Style is SIMPLE_CRUD: direct controller-to-repository access is LOW/POSSIBLE, missing service layer is not automatically a problem, pagination only matters for real collection/list endpoints, and recommendations should avoid large architectural refactors.
+				If Architecture Maturity is PROTOTYPE or EARLY_STAGE: avoid premature abstraction, avoid recommending service layers or extra indirection unless the finding shows shared business logic, transaction boundaries, reuse, or substantial growth pressure.
 				
 				Prioritize analysis of:
 				- Architecture layering quality
@@ -149,6 +153,7 @@ public class PromptBuilderService {
 				  ]
 				}
 				""".formatted(summary, relationships, endpoints, packages, result.architectureStyle(),
+						result.architectureMaturity(),
 						hotspotsText, observationsText,
 						couplingRankingText, classMetricsText, riskScoreText,
 						scoreGuidanceText, evidenceFindingsText);
@@ -276,7 +281,7 @@ public class PromptBuilderService {
 			return "None";
 		}
 		return findings.stream()
-				.map(finding -> "%s (severity: %s, confidence: %s, category: %s, priority: %d) affectedClasses=%s evidence=%s impact=%s recommendation=%s".formatted(
+				.map(finding -> "%s (severity: %s, confidence: %s, category: %s, priority: %d) affectedClasses=%s evidence=%s impact=%s findingImpact=%s recommendation=%s".formatted(
 						finding.title(),
 						finding.severity(),
 						finding.confidence(),
@@ -285,6 +290,7 @@ public class PromptBuilderService {
 						finding.affectedClasses(),
 						finding.evidence(),
 						finding.impact(),
+						finding.findingImpact(),
 						finding.recommendation()))
 				.collect(Collectors.joining("\n"));
 	}

@@ -1,10 +1,13 @@
 package com.isbrain.codebaseanalyzer.service;
 
 import com.isbrain.codebaseanalyzer.model.EvidenceBasedFinding;
+import com.isbrain.codebaseanalyzer.model.ArchitectureMaturity;
+import com.isbrain.codebaseanalyzer.model.ArchitectureStyle;
 import com.isbrain.codebaseanalyzer.model.FindingCategory;
 import com.isbrain.codebaseanalyzer.model.FindingConfidence;
 import com.isbrain.codebaseanalyzer.model.FindingPriority;
 import com.isbrain.codebaseanalyzer.model.FindingSeverity;
+import com.isbrain.codebaseanalyzer.model.RiskLevel;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -45,6 +48,34 @@ class FindingMergeServiceTest {
 		assertEquals(18, result.priority());
 		assertEquals(Set.of("PetController", "OwnerController", "VisitController", "VetController"), result.affectedClasses());
 		assertEquals(4, result.evidence().size());
+	}
+
+	@Test
+	void mergedControllerRepositoryFindingUsesEarlyStageSimpleCrudConsequence() {
+		var finding = new EvidenceBasedFinding(
+				"Controller-to-repository access",
+				FindingSeverity.LOW,
+				FindingConfidence.POSSIBLE,
+				List.of("OwnerController"),
+				List.of("OwnerController -> OwnerRepository"),
+				"Acceptable for this small CRUD application.",
+				"Introduce application services only when business logic grows.",
+				FindingCategory.ARCHITECTURE,
+				new FindingPriority(12)
+		);
+
+		var result = mergeService.merge(
+				List.of(finding),
+				ArchitectureMaturity.EARLY_STAGE,
+				ArchitectureStyle.SIMPLE_CRUD
+		).get(0);
+
+		assertEquals("No meaningful impact.", result.findingImpact().shortTermImpact());
+		assertEquals(RiskLevel.LOW, result.findingImpact().growthRisk());
+		assertEquals("Current design is appropriate for an early-stage CRUD application. No meaningful short-term impact.",
+				result.impact());
+		assertEquals("Avoid premature abstraction. Keep the current design until business rules become reusable, transactional, or shared.",
+				result.recommendation());
 	}
 
 	@Test

@@ -11,8 +11,24 @@ public record EvidenceBasedFinding(
 		String impact,
 		String recommendation,
 		FindingCategory category,
-		FindingPriority priority
+		FindingPriority priority,
+		FindingImpact findingImpact
 ) {
+	public EvidenceBasedFinding(
+			String title,
+			FindingSeverity severity,
+			FindingConfidence confidence,
+			List<String> affectedClasses,
+			List<String> evidence,
+			String impact,
+			String recommendation,
+			FindingCategory category,
+			FindingPriority priority
+	) {
+		this(title, severity, confidence, affectedClasses, evidence, impact, recommendation,
+				category, priority, FindingImpact.none());
+	}
+
 	public EvidenceBasedFinding(
 			String title,
 			FindingSeverity severity,
@@ -23,7 +39,7 @@ public record EvidenceBasedFinding(
 			String recommendation
 	) {
 		this(title, severity, confidence, affectedClasses, evidence, impact, recommendation,
-				FindingCategory.DESIGN, priorityFor(severity, confidence));
+				FindingCategory.DESIGN, priorityFor(severity, confidence), FindingImpact.none());
 	}
 
 	public EvidenceBasedFinding {
@@ -32,6 +48,9 @@ public record EvidenceBasedFinding(
 		}
 		if (priority == null) {
 			priority = priorityFor(severity, confidence);
+		}
+		if (findingImpact == null) {
+			findingImpact = FindingImpact.none();
 		}
 	}
 

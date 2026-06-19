@@ -26,12 +26,13 @@ class SelfScanIntegrationTest {
 		var springSpecificAnalyzer = new SpringSpecificAnalyzer();
 		var findingMergeService = new FindingMergeService();
 		var architectureStyleClassifier = new ArchitectureStyleClassifier();
+		var architectureMaturityClassifier = new ArchitectureMaturityClassifier();
 		var riskAreaAggregator = new RiskAreaAggregator();
 
 		scannerService = new ProjectScannerService(
 				classAnalyser, summaryBuilder, observationDetector, mermaidGenerator, hotspotAnalyzer, riskScorer,
 				scoreAlignmentService, evidenceFindingBuilder, dependencyDirectionAnalyzer, springSpecificAnalyzer,
-				findingMergeService, architectureStyleClassifier, riskAreaAggregator);
+				findingMergeService, architectureStyleClassifier, architectureMaturityClassifier, riskAreaAggregator);
 	}
 
 	@Test
@@ -52,6 +53,7 @@ class SelfScanIntegrationTest {
 		assertNotNull(result.mergedFindings());
 		assertNotNull(result.architectureStyle());
 		assertNotNull(result.architectureStyleAssessment());
+		assertNotNull(result.architectureMaturity());
 		assertNotNull(result.riskAreas());
 		assertNotNull(result.mermaidDiagram());
 	}

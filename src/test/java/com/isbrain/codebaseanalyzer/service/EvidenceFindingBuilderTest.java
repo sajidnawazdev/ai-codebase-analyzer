@@ -1,9 +1,12 @@
 package com.isbrain.codebaseanalyzer.service;
 
 import com.isbrain.codebaseanalyzer.model.ArchitectureObservation;
+import com.isbrain.codebaseanalyzer.model.ArchitectureMaturity;
+import com.isbrain.codebaseanalyzer.model.ArchitectureStyle;
 import com.isbrain.codebaseanalyzer.model.FindingCategory;
 import com.isbrain.codebaseanalyzer.model.FindingConfidence;
 import com.isbrain.codebaseanalyzer.model.FindingSeverity;
+import com.isbrain.codebaseanalyzer.model.RiskLevel;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -84,5 +87,33 @@ class EvidenceFindingBuilderTest {
 		assertEquals("Circular dependency", finding.title());
 		assertEquals(FindingCategory.ARCHITECTURE, finding.category());
 		assertEquals(75, finding.priority().score());
+	}
+
+	@Test
+	void usesEarlyStageSimpleCrudRecommendationForControllerRepositoryAccess() {
+		var observation = new ArchitectureObservation(
+				"LAYERING",
+				"OwnerController",
+				"OwnerController accesses OwnerRepository directly. Determine whether this is an intentional architectural choice or a layering concern.",
+				60,
+				true,
+				FindingConfidence.POSSIBLE,
+				FindingSeverity.LOW
+		);
+
+		var finding = builder.build(
+				List.of(observation),
+				ArchitectureMaturity.EARLY_STAGE,
+				ArchitectureStyle.SIMPLE_CRUD
+		).get(0);
+
+		assertEquals("Controller-to-repository access", finding.title());
+		assertEquals("No meaningful impact.", finding.findingImpact().shortTermImpact());
+		assertEquals("Business rules may become duplicated across controllers.", finding.findingImpact().longTermImpact());
+		assertEquals(RiskLevel.LOW, finding.findingImpact().growthRisk());
+		assertEquals("Current design is appropriate for an early-stage CRUD application. No meaningful short-term impact.",
+				finding.impact());
+		assertEquals("Avoid premature abstraction. Keep the current design until business rules become reusable, transactional, or shared.",
+				finding.recommendation());
 	}
 }
